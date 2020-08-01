@@ -22,9 +22,10 @@
     "build": "rollup -c rollup.config.ts"
   },
   "devDependencies": {
+    "@babel/polyfill": "^7.10.4",
+    "janus-gateway-client": "^0.0.1",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
-    "@babel/polyfill": "^7.10.4",
     "rollup": "^2.23.0",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-json": "^4.0.0",

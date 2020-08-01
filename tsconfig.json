@@ -8,11 +8,13 @@
     "strictNullChecks": false,
     "sourceMap": true,
     "declaration": true,
+    "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "declarationDir": "dist",
     "outDir": "dist",
+    "jsx": "react",
     "typeRoots": [
       "node_modules/@types"
     ]
