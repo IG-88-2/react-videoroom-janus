@@ -1,0 +1,38 @@
+{
+  "name": "react-janus-videoroom",
+  "version": "0.0.0",
+  "description": "react-janus-videoroom",
+  "author": "Anatoly Strashkevich",
+  "copyright": "Copyright © 2020 Janus",
+  "private": true,
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+  "browser": "dist/index.js",
+  "repository": "",
+  "keywords": [
+    "videoroom",
+    "webrtc",
+    "janus",
+    "calls",
+    "videocalls",
+    "video",
+    "react"
+  ],
+  "scripts": {
+    "build": "rollup -c rollup.config.ts"
+  },
+  "devDependencies": {
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "@babel/polyfill": "^7.10.4",
+    "rollup": "^2.23.0",
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-json": "^4.0.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
+    "rollup-plugin-sourcemaps": "^0.6.2",
+    "rollup-plugin-typescript2": "^0.27.1",
+    "ts-loader": "8.0.1",
+    "typescript": "^3.9.7"
+  },
+  "dependencies": {}
+}
