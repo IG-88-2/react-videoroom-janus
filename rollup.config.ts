@@ -2,6 +2,7 @@ import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
 import sourceMaps from 'rollup-plugin-sourcemaps';
 import typescript from 'rollup-plugin-typescript2';
+import copy from 'rollup-plugin-copy';
 const pkg = require('./package.json');
 
 const globals = {
@@ -48,6 +49,11 @@ export default {
     resolve({
       browser: true
     }),
-    sourceMaps()
+    sourceMaps(),
+    copy({
+      targets: [
+        { src: './package.json', dest: 'dist' }
+      ]
+    })
   ]
 }

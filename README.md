@@ -1,6 +1,8 @@
 # react-janus-videoroom
 
-One Paragraph of project description goes here
+the way to effortlessly embed video calls in your react application, 
+package based upon video i saw on youtube about scaling janus gateway
+[video](https://www.youtube.com/watch?v=zxRwELmyWU0&t=1s) - here is the link 
 
 ## Getting Started
 
