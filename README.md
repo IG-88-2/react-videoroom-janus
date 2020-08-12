@@ -10,6 +10,8 @@ A) react app with capability to make calls
 B) node server which is going to leverage janus docker containers
 C) bunch of docker containers running janus-gateway and relaying calls for our react app
 
+![alt text](https://github.com/IG-88-2/react-janus-videoroom/blob/master/plan.jpg?raw=true)
+
 This is screenshot from [video](https://www.youtube.com/watch?v=zxRwELmyWU0&t=1s), if i understood everything correctly 
 this is the idea. 5 separate repositories:
 
