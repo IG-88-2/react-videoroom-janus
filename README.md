@@ -6,7 +6,9 @@ package based upon [video](https://www.youtube.com/watch?v=zxRwELmyWU0&t=1s) i s
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+ok so what this is all about
+
+![alt text](https://github.com/IG-88-2/react-janus-videoroom/blob/master/plan.jpg?raw=true)
 
 ### Prerequisites
 
