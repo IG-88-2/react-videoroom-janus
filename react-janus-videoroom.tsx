@@ -6,7 +6,14 @@ const { JanusClient } = client;
 
 let count = 0;
 
-
+/*
+{
+	"iceServers": [{
+		urls: "stun:stun.voip.eutelia.it:3478"
+	}],
+	"sdpSemantics" : "unified-plan"
+}
+*/
 
 const getId = () => {
 
@@ -206,7 +213,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 				this.props.onError(error);
 	
 			},
-			getId: () => getId()
+			generateId: () => getId()
 		});
 	
 		this.client.initialize()
@@ -347,8 +354,6 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		const container = document.getElementById("local");
 		
 		container.appendChild(video);
-	
-		
 		
 		video.srcObject = publisher.stream;
 
@@ -356,7 +361,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 
-	onSubscriberTerminater = (subscriber) => () => {
+	onSubscriberTerminated = (subscriber) => () => {
 		
 		const video = document.getElementById(subscriber.id);
 
@@ -394,7 +399,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onSubscriber = async (subscriber) => {
 		
-		subscriber.addEventListener("terminated", this.onSubscriberTerminater(subscriber));
+		subscriber.addEventListener("terminated", this.onSubscriberTerminated(subscriber));
 	
 		subscriber.addEventListener("leaving", this.onSubscriberLeaving(subscriber));
 	

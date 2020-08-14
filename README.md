@@ -42,7 +42,7 @@ E) [janus-gateway-videoroom-demo](https://github.com/IG-88-2/janus-gateway-video
 
 ## Authors
 
-* **IG-88-2**
+* **Anatoly Strashkevich**
 
 ## License
 

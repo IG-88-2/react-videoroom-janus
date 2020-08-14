@@ -7662,9 +7662,7 @@ var C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient =
                     vt = this.pc.addTransceiver("video", { direction: "recvonly" });
                     at = this.pc.addTransceiver("audio", { direction: "recvonly" });
                 }
-                const answer = yield this.pc.createAnswer({
-                    iceRestart: true
-                });
+                const answer = yield this.pc.createAnswer(this.constraints);
                 this.pc.setLocalDescription(answer);
                 return answer;
             });
@@ -7763,11 +7761,12 @@ var C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient =
                 const result = yield this.transaction(request);
                 return result;
             });
-            const { transaction, room_id, feed, configuration, logger, getId } = options;
+            const { transaction, room_id, feed, configuration, constraints, logger, getId } = options;
             this.id = getId();
             this.transaction = transaction;
             this.feed = feed;
             this.configuration = configuration;
+            this.constraints = constraints;
             this.room_id = room_id;
             this.ptype = "subscriber";
             this.attached = false;
@@ -8012,7 +8011,10 @@ var C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient =
                         feed,
                         logger: this.logger,
                         getId: this.getId,
-                        configuration: {}
+                        configuration: {},
+                        constraints: {
+                        //iceRestart: true
+                        }
                     });
                     this.subscribers[feed] = subscriber;
                     this.onSubscriber(subscriber);
@@ -8224,148 +8226,229 @@ var client = unwrapExports(C__Users_clint_Desktop_reactJanusVideoroom_node_modul
 
 const { JanusClient } = client;
 let count = 0;
-const uuidv1 = () => {
+/*
+{
+    "iceServers": [{
+        urls: "stun:stun.voip.eutelia.it:3478"
+    }],
+    "sdpSemantics" : "unified-plan"
+}
+*/
+const getId = () => {
     count++;
     return String(count);
 };
+let enabled = false;
 const logger = {
     enable: () => {
+        enabled = true;
     },
     disable: () => {
+        enabled = false;
     },
     success: (...args) => {
+        if (enabled) {
+            console.log(...args);
+        }
     },
     info: (...args) => {
+        if (enabled) {
+            console.log(...args);
+        }
     },
     error: (error) => {
-    },
-    json: (...args) => {
-    },
-    tag: (tag, type) => (...args) => {
-    }
-};
-const onPublisher = (publisher, onDisconnected) => {
-    const video = document.createElement("video");
-    video.id = publisher.id;
-    video.autoplay = true;
-    video.muted = true;
-    video.width = 320;
-    video.height = 240;
-    video.style.height = "100%";
-    const container = document.getElementById("local");
-    container.appendChild(video);
-    publisher.addEventListener("terminated", () => {
-        const video = document.getElementById(publisher.id);
-        if (video) {
-            video.remove();
-        }
-    });
-    publisher.addEventListener("disconnected", () => {
-        //TODO where i should reinitialize in case webrtc down ???
-        //TODO prevent any actions while renegotiation is happening
-        //reinitialize
-        /*
-        publisher.initialize()
-        .then(() => {
-
-            log.info('[publisher] handling disconnected event...succesfully renegotiated');
-            
-            video.srcObject = publisher.stream;
-
-        });
-        */
-    });
-    video.srcObject = publisher.stream;
-};
-const onSubscriber = (subscriber) => __awaiter(void 0, void 0, void 0, function* () {
-    const video = document.createElement("video");
-    video.id = subscriber.id;
-    video.autoplay = true;
-    video.width = 180;
-    video.height = 120;
-    video.style.background = "green";
-    video.style.padding = "5px";
-    const container = document.getElementById("container");
-    container.appendChild(video);
-    subscriber.addEventListener("terminated", () => {
-        const video = document.getElementById(subscriber.id);
-        if (video) {
-            video.remove();
-        }
-    });
-    subscriber.addEventListener("leaving", () => {
-        const video = document.getElementById(subscriber.id);
-        if (video) {
-            video.remove();
-        }
-    });
-    subscriber.addEventListener("disconnected", () => {
-    });
-    yield subscriber.initialize();
-    video.srcObject = subscriber.stream;
-});
-const connect = (client, server) => {
-    if (client.current) {
-        console.log('already connected...');
-        return client.current.getRooms().then(({ load }) => load);
-    }
-    client.current = new JanusClient({
-        server,
-        logger,
-        WebSocket: ReconnectingWebSocket,
-        onPublisher: (publisher) => {
-            onPublisher(publisher);
-        },
-        onSubscriber: (subscriber) => __awaiter(void 0, void 0, void 0, function* () {
-            onSubscriber(subscriber);
-        }),
-        onError: (error) => {
-        },
-        getId: () => uuidv1()
-    });
-    return client.current.initialize()
-        .then(() => (client.current.getRooms().then(({ load }) => load)));
-};
-const disconnect = (client) => __awaiter(void 0, void 0, void 0, function* () {
-    if (client.current) {
-        if (client.current.publisher) {
-            const video = document.getElementById(client.current.publisher.id);
-            if (video) {
-                video.remove();
-            }
-        }
-        try {
-            yield client.current.terminate();
-            console.log('terminated!');
-        }
-        catch (error) {
+        if (enabled) {
             console.error(error);
         }
-        client.current = null;
+    },
+    json: (...args) => {
+        if (enabled) {
+            console.log(...args);
+        }
+    },
+    tag: (tag, type) => (...args) => {
+        if (enabled) {
+            console.log(tag, type, ...args);
+        }
     }
-});
+};
+class Video extends React.Component {
+    constructor(props) {
+        super(props);
+    }
+    componentDidMount() {
+        this.video.srcObject = this.props.stream;
+    }
+    render() {
+        const { id, muted, style } = this.props;
+        return React.createElement("video", { id: id, muted: muted, autoPlay: true, style: style, ref: (video) => { this.video = video; } });
+    }
+}
 class JanusVideoRoom extends React.Component {
     constructor(props) {
         super(props);
+        this.changeRoom = (prevProps) => {
+            if (prevProps.room) {
+                this.client.leave()
+                    .then(() => {
+                    this.client.join(this.props.room);
+                });
+            }
+            else {
+                this.client.join(this.props.room);
+            }
+        };
+        this.onPublisherTerminated = (publisher) => () => {
+            const video = document.getElementById(publisher.id);
+            if (video) {
+                video.remove();
+            }
+        };
+        this.onPublisherDisconnected = (publisher) => () => {
+            //TODO where i should reinitialize in case webrtc down ???
+            //TODO prevent any actions while renegotiation is happening
+            //reinitialize
+            /*
+            publisher.initialize()
+            .then(() => {
+    
+                log.info('[publisher] handling disconnected event...succesfully renegotiated');
+                
+                video.srcObject = publisher.stream;
+    
+            });
+    
+            const room_id = client.current.room_id;
+    
+            client.current.leave()
+            .then(() => {
+    
+    
+                return client.current.join(room_id);
+    
+            })
+            .then(() => {
+    
+                
+            })
+            .catch((error) => {
+    
+    
+            });
+            */
+        };
+        this.onPublisher = (publisher) => __awaiter(this, void 0, void 0, function* () {
+            publisher.addEventListener("terminated", this.onPublisherTerminated(publisher));
+            publisher.addEventListener("disconnected", this.onPublisherDisconnected(publisher));
+            this.props.onConnected(publisher);
+            const video = document.createElement("video");
+            video.id = publisher.id;
+            video.autoplay = true;
+            video.muted = true;
+            video.width = 320;
+            video.height = 240;
+            video.style.height = "100%";
+            const container = document.getElementById("local");
+            container.appendChild(video);
+            video.srcObject = publisher.stream;
+        });
+        this.onSubscriberTerminated = (subscriber) => () => {
+            const video = document.getElementById(subscriber.id);
+            if (video) {
+                video.remove();
+            }
+            this.props.onParticipantLeft(subscriber);
+        };
+        this.onSubscriberLeaving = (subscriber) => () => {
+            const video = document.getElementById(subscriber.id);
+            if (video) {
+                video.remove();
+            }
+            this.props.onParticipantLeft(subscriber);
+        };
+        this.onSubscriberDisconnected = (subscriber) => () => {
+        };
+        this.onSubscriber = (subscriber) => __awaiter(this, void 0, void 0, function* () {
+            subscriber.addEventListener("terminated", this.onSubscriberTerminated(subscriber));
+            subscriber.addEventListener("leaving", this.onSubscriberLeaving(subscriber));
+            subscriber.addEventListener("disconnected", this.onSubscriberLeaving(subscriber));
+            yield subscriber.initialize();
+            this.props.onParticipantJoined(subscriber);
+        });
+        this.renderVideo = (subscriber) => {
+            if (this.props.renderStream) {
+                return this.props.renderStream(subscriber);
+            }
+            return React.createElement("div", { style: this.styles.videoContainer },
+                React.createElement(Video, { id: subscriber.id, muted: false, style: this.styles.video, stream: subscriber.stream }));
+        };
+        this.renderLocalVideo = () => {
+            const publisher = this.client.publisher;
+            if (this.props.renderLocalStream(publisher)) {
+                return this.props.renderLocalStream(publisher);
+            }
+            return React.createElement("div", { style: this.styles.localVideoContainer },
+                React.createElement(Video, { id: publisher.id, muted: true, style: this.styles.localVideo, stream: publisher.stream }));
+        };
+        this.renderContainer = () => {
+            const subscribers = Object.values(this.client.subscribers);
+            const content = (React.createElement(React.Fragment, null,
+                this.renderLocalVideo(),
+                subscribers.map((subscriber) => {
+                    return this.renderVideo(subscriber);
+                })));
+            if (this.props.renderContainer) {
+                return this.props.renderContainer(content);
+            }
+            return React.createElement("div", { style: this.styles.container }, content);
+        };
         this.state = {};
+        const customStyles = this.props.customStyles || {};
+        this.styles = Object.assign({ video: {}, container: {}, videoContainer: {}, localVideo: {}, localVideoContainer: {} }, customStyles);
     }
     componentDidMount() {
-        //validate props
         const { server } = this.props;
-        connect(client, server)
-            .then((rooms) => {
+        this.client = new JanusClient({
+            server,
+            logger,
+            WebSocket: ReconnectingWebSocket,
+            onPublisher: this.onPublisher,
+            onSubscriber: this.onSubscriber,
+            onError: (error) => {
+                this.props.onError(error);
+            },
+            generateId: () => getId()
+        });
+        this.client.initialize()
+            .then(() => (this.client.getRooms()))
+            .then(({ load }) => {
+            this.props.onRooms(load);
+            this.connected = true;
+        })
+            .catch((error) => {
+            this.props.onError(error);
         });
     }
+    componentDidUpdate(prevProps) {
+        if (prevProps.room !== this.props.room && this.props.room) {
+            this.changeRoom(prevProps);
+        }
+    }
     componentWillUnmount() {
-        disconnect(client);
-    }
-    componentWillReceiveProps() {
-    }
-    componentDidUpdate() {
+        this.connected = false;
+        this.client.terminate()
+            .then(() => {
+            this.props.onDisconnected();
+        })
+            .catch((error) => {
+            this.props.onError(error);
+        });
     }
     render() {
-        return React.createElement("div", { style: {} },
-            React.createElement("div", { id: "react-janus-videoroom-container", style: {} }));
+        if (!this.client) {
+            return null;
+        }
+        return this.renderContainer();
     }
 }
 
