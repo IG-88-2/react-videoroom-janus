@@ -4,79 +4,6 @@ import client from 'janus-gateway-client';
 import { Component, Fragment } from 'react';
 const { JanusClient } = client;
 
-let count = 0;
-
-/*
-{
-	"iceServers": [{
-		urls: "stun:stun.voip.eutelia.it:3478"
-	}],
-	"sdpSemantics" : "unified-plan"
-}
-*/
-
-const getId = () => {
-
-    count++;
-
-    return String(count);
-
-}
-
-
-
-let enabled = false;
-
-
-
-const logger = {
-    enable: () => {
-
-        enabled = true;
-    
-    },
-    disable: () => {
-    
-        enabled = false;
-    
-    },
-    success: (...args) => {
-
-        if (enabled) {
-            console.log(...args);
-        }
-
-    },
-    info: (...args) => {
-
-        if (enabled) {
-            console.log(...args);
-        }
-
-    },
-    error: (error:any) => {
-
-        if (enabled) {
-            console.error(error);
-        }
-
-    },
-    json: (...args) => {
-
-        if (enabled) {
-            console.log(...args);
-        }
-
-    },
-    tag: (tag:string, type:`success` | `info` | `error`) => (...args) => {
-
-        if (enabled) {
-            console.log(tag, type, ...args);
-        }
-        
-    }
-};
-
 
 
 interface VideoProps {
@@ -101,13 +28,17 @@ class Video extends Component<VideoProps,VideoState> {
 
 		super(props);
 		
-    }
+	}
+	
+
 
 	componentDidMount() {
 
 		this.video.srcObject = this.props.stream;
 
 	}
+
+
 
 	render () {
 
@@ -139,11 +70,15 @@ interface CustomStyles {
 	localVideoContainer?:any
 }
 
+
+
 interface JanusVideoRoomProps {
 	server:string,
 	room:string,
+	generateId:() => string,
 	onConnected:(publisher:any) => void,
 	onDisconnected:(error?:any) => void,
+	onPublisherDisconnected:(publisher:any) => void,
 	onRooms:(rooms:any) => void,
 	onError:(error:any) => void,
 	onParticipantJoined:(participant:any) => void,
@@ -151,28 +86,41 @@ interface JanusVideoRoomProps {
 	renderContainer:(children:any) => any,
 	renderStream:(subscriber:any) => any,
 	renderLocalStream:(publisher:any) => any,
-	customStyles:CustomStyles
+	logger?:any,
+	rtcConfiguration?:any,
+	mediaConstraints?:any,
+	customStyles?:CustomStyles
 }
 
 
 
 interface JanusVideoRoomState {
-
+	publisher:any,
+	[id:string]:any
 }
 
 
 
 export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoomState> {
-	client:any 
-	connected:boolean
+	client:any
 	styles:CustomStyles
+	connected:boolean
+	logger:any
+	loggerEnabled:boolean
 
     constructor(props) {
 
         super(props);
 
-		this.state = {};
+		this.state = {
+			publisher:null,
+
+		};
 		
+		this.connected = false;
+		
+		this.loggerEnabled = true;
+
 		const customStyles = this.props.customStyles || {};
 
 		this.styles = {
@@ -194,26 +142,98 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			...customStyles
 		};
 
+		this.logger = {
+			enable: () => {
+		
+				this.loggerEnabled = true;
+			
+			},
+			disable: () => {
+			
+				this.loggerEnabled = false;
+			
+			},
+			success: (...args) => {
+		
+				if (this.loggerEnabled) {
+					if (this.props.logger && this.props.logger.success) {
+						this.props.logger.success(...args);
+					} else {
+						console.log(...args);
+					}
+				}
+		
+			},
+			info: (...args) => {
+		
+				if (this.loggerEnabled) {
+					if (this.props.logger && this.props.logger.info) {
+						this.props.logger.info(...args);
+					} else {
+						console.log(...args);
+					}
+				}
+		
+			},
+			error: (error:any) => {
+		
+				if (this.loggerEnabled) {
+					if (this.props.logger && this.props.logger.error) {
+						this.props.logger.error(error);
+					} else {
+						console.error(error);
+					}
+				}
+		
+			},
+			json: (...args) => {
+		
+				if (this.loggerEnabled) {
+					if (this.props.logger && this.props.logger.json) {
+						this.props.logger.json(...args);
+					} else {
+						console.log(...args);
+					}
+				}
+		
+			},
+			tag: (tag:string, type:`success` | `info` | `error`) => (...args) => {
+		
+				if (this.loggerEnabled) {
+					console.log(tag, type, ...args);
+				}
+				
+			}
+		};
+
     }
 
 
 
     componentDidMount() {
 
-		const { server } = this.props;
+		const { server, generateId } = this.props;
+
+		const rtcConfiguration = this.props.rtcConfiguration || {
+			"iceServers": [{
+				urls: "stun:stun.voip.eutelia.it:3478"
+			}],
+			"sdpSemantics" : "unified-plan"
+		};
 		
 		this.client = new JanusClient({
-			server,
-			logger,
-			WebSocket: ReconnectingWebSocket,
 			onPublisher: this.onPublisher,
 			onSubscriber: this.onSubscriber,
-			onError: (error) => {
-	
-				this.props.onError(error);
-	
-			},
-			generateId: () => getId()
+			onError: (error) => this.props.onError(error),
+			generateId,
+			server,
+			logger:this.logger,
+			WebSocket: ReconnectingWebSocket,
+			subscriberRtcConfiguration: rtcConfiguration,
+			publisherRtcConfiguration: rtcConfiguration,
+			mediaConstraints: this.props.mediaConstraints || {},
+			transactionTimeout: 5000,
+			keepAliveInterval: 20000
 		});
 	
 		this.client.initialize()
@@ -226,7 +246,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 			this.props.onRooms(load);
 
-			this.connected = true;
+			this.connected = false;
 
 		})
 		.catch((error) => {
@@ -249,14 +269,22 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 
+	componentDidCatch(error, info) {
+
+		this.props.onError(error);
+		
+		this.logger.info(info);
+
+	}
+
+
+
 	componentWillUnmount() {
-
-		this.connected = false;
-
+		
 		this.client.terminate()
 		.then(() => {
 			
-			this.props.onDisconnected();
+			return this.props.onDisconnected();
 
 		})
 		.catch((error) => {
@@ -274,10 +302,20 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		if (prevProps.room) {
 			this.client.leave()
 			.then(() => {
-				this.client.join(this.props.room);
+				return this.client.join(this.props.room);
+			})
+			.catch((error) => {
+
+				this.props.onError(error);
+	
 			});
 		} else {
-			this.client.join(this.props.room);
+			this.client.join(this.props.room)
+			.catch((error) => {
+
+				this.props.onError(error);
+	
+			});
 		}
 
 	}
@@ -285,12 +323,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 	onPublisherTerminated = (publisher) => () => {
-
-		const video = document.getElementById(publisher.id);
-	
-		if (video) {
-			video.remove();
-		}
+		
+		this.setState({
+			publisher:null
+		});
 
 	}
 
@@ -298,38 +334,14 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onPublisherDisconnected = (publisher) => () => {
 		
-		//TODO where i should reinitialize in case webrtc down ???
-		//TODO prevent any actions while renegotiation is happening
-		//reinitialize
-		/*
-		publisher.initialize()
-		.then(() => {
+		this.setState({
+			publisher:null
+		}, () => {
 
-			log.info('[publisher] handling disconnected event...succesfully renegotiated');
-			
-			video.srcObject = publisher.stream;
+			this.props.onPublisherDisconnected(publisher);
 
 		});
-
-		const room_id = client.current.room_id;
-
-		client.current.leave()
-		.then(() => {
-
-
-			return client.current.join(room_id);
-
-		})
-		.then(() => {
-
-			
-		})
-		.catch((error) => {
-
-
-		});
-		*/
-
+		
 	}
 
 
@@ -341,21 +353,6 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		publisher.addEventListener("disconnected", this.onPublisherDisconnected(publisher));
 
 		this.props.onConnected(publisher);
-	
-		const video = document.createElement("video");
-
-		video.id = publisher.id;
-		video.autoplay = true;
-		video.muted = true;
-		video.width = 320;
-		video.height = 240;
-		video.style.height = "100%";
-		
-		const container = document.getElementById("local");
-		
-		container.appendChild(video);
-		
-		video.srcObject = publisher.stream;
 
 	}
 
@@ -363,27 +360,27 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onSubscriberTerminated = (subscriber) => () => {
 		
-		const video = document.getElementById(subscriber.id);
+		this.setState({
+			[subscriber.id]: undefined
+		}, () => {
 
-		if (video) {
-			video.remove();
-		}
+			this.props.onParticipantLeft(subscriber);
 
-		this.props.onParticipantLeft(subscriber);
-
+		});
+		
 	}
 
 
 
 	onSubscriberLeaving = (subscriber) => () => {
 		
-		const video = document.getElementById(subscriber.id);
+		this.setState({
+			[subscriber.id]: undefined
+		}, () => {
 
-		if (video) {
-			video.remove();
-		}
+			this.props.onParticipantLeft(subscriber);
 
-		this.props.onParticipantLeft(subscriber);
+		});
 			
 	}
 
@@ -391,7 +388,13 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onSubscriberDisconnected = (subscriber) => () => {
 		
-		
+		this.setState({
+			[subscriber.id]: undefined
+		}, () => {
+
+			this.props.onParticipantLeft(subscriber);
+
+		});
 			
 	}
 
@@ -405,9 +408,23 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	
 		subscriber.addEventListener("disconnected", this.onSubscriberLeaving(subscriber));
 		
-		await subscriber.initialize();
+		try {
 
-		this.props.onParticipantJoined(subscriber);
+			await subscriber.initialize();
+
+			this.setState({
+				[subscriber.id]: subscriber
+			}, () => {
+
+				this.props.onParticipantJoined(subscriber);
+
+			});
+			
+		} catch(error) {
+			
+			this.props.onError(error);
+
+		}
 		
 	}
 
@@ -434,20 +451,26 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	renderLocalVideo = () => {
 
-		const publisher = this.client.publisher;
+		const publisher = this.state.publisher;
+
+		if (!publisher) {
+			return null;
+		}
 
 		if (this.props.renderLocalStream(publisher)) {
 			return this.props.renderLocalStream(publisher);
 		}
 
-		return <div style={this.styles.localVideoContainer}>
-			<Video
-				id={publisher.id}
-				muted={true}
-				style={this.styles.localVideo}
-				stream={publisher.stream}
-			/>
-		</div>
+		return (
+			<div style={this.styles.localVideoContainer}>
+				<Video
+					id={publisher.id}
+					muted={true}
+					style={this.styles.localVideo}
+					stream={publisher.stream}
+				/>
+			</div>
+		);
 
 	}
 
@@ -455,7 +478,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	renderContainer = () => {
 		
-		const subscribers = Object.values(this.client.subscribers);
+		const subscribers = Object.values(this.state.subscribers).filter((element:any) => element && element.ptype==="subscriber");
 
 		const content = (
 			<Fragment>
@@ -470,7 +493,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 					})
 				}
 			</Fragment>
-		)
+		);
 
 		if (this.props.renderContainer) {
 			return this.props.renderContainer(content);

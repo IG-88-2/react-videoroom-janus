@@ -8225,19 +8225,6 @@ var C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient =
 var client = unwrapExports(C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient);
 
 const { JanusClient } = client;
-let count = 0;
-/*
-{
-    "iceServers": [{
-        urls: "stun:stun.voip.eutelia.it:3478"
-    }],
-    "sdpSemantics" : "unified-plan"
-}
-*/
-const getId = () => {
-    count++;
-    return String(count);
-};
 let enabled = false;
 const logger = {
     enable: () => {
@@ -8291,89 +8278,72 @@ class JanusVideoRoom extends React.Component {
             if (prevProps.room) {
                 this.client.leave()
                     .then(() => {
-                    this.client.join(this.props.room);
+                    return this.client.join(this.props.room);
+                })
+                    .catch((error) => {
+                    this.props.onError(error);
                 });
             }
             else {
-                this.client.join(this.props.room);
+                this.client.join(this.props.room)
+                    .catch((error) => {
+                    this.props.onError(error);
+                });
             }
         };
         this.onPublisherTerminated = (publisher) => () => {
-            const video = document.getElementById(publisher.id);
-            if (video) {
-                video.remove();
-            }
+            this.setState({
+                publisher: null
+            });
         };
         this.onPublisherDisconnected = (publisher) => () => {
-            //TODO where i should reinitialize in case webrtc down ???
-            //TODO prevent any actions while renegotiation is happening
-            //reinitialize
-            /*
-            publisher.initialize()
-            .then(() => {
-    
-                log.info('[publisher] handling disconnected event...succesfully renegotiated');
-                
-                video.srcObject = publisher.stream;
-    
+            this.setState({
+                publisher: null
+            }, () => {
+                this.props.onPublisherDisconnected(publisher);
             });
-    
-            const room_id = client.current.room_id;
-    
-            client.current.leave()
-            .then(() => {
-    
-    
-                return client.current.join(room_id);
-    
-            })
-            .then(() => {
-    
-                
-            })
-            .catch((error) => {
-    
-    
-            });
-            */
         };
         this.onPublisher = (publisher) => __awaiter(this, void 0, void 0, function* () {
             publisher.addEventListener("terminated", this.onPublisherTerminated(publisher));
             publisher.addEventListener("disconnected", this.onPublisherDisconnected(publisher));
             this.props.onConnected(publisher);
-            const video = document.createElement("video");
-            video.id = publisher.id;
-            video.autoplay = true;
-            video.muted = true;
-            video.width = 320;
-            video.height = 240;
-            video.style.height = "100%";
-            const container = document.getElementById("local");
-            container.appendChild(video);
-            video.srcObject = publisher.stream;
         });
         this.onSubscriberTerminated = (subscriber) => () => {
-            const video = document.getElementById(subscriber.id);
-            if (video) {
-                video.remove();
-            }
-            this.props.onParticipantLeft(subscriber);
+            this.setState({
+                [subscriber.id]: undefined
+            }, () => {
+                this.props.onParticipantLeft(subscriber);
+            });
         };
         this.onSubscriberLeaving = (subscriber) => () => {
-            const video = document.getElementById(subscriber.id);
-            if (video) {
-                video.remove();
-            }
-            this.props.onParticipantLeft(subscriber);
+            this.setState({
+                [subscriber.id]: undefined
+            }, () => {
+                this.props.onParticipantLeft(subscriber);
+            });
         };
         this.onSubscriberDisconnected = (subscriber) => () => {
+            this.setState({
+                [subscriber.id]: undefined
+            }, () => {
+                this.props.onParticipantLeft(subscriber);
+            });
         };
         this.onSubscriber = (subscriber) => __awaiter(this, void 0, void 0, function* () {
             subscriber.addEventListener("terminated", this.onSubscriberTerminated(subscriber));
             subscriber.addEventListener("leaving", this.onSubscriberLeaving(subscriber));
             subscriber.addEventListener("disconnected", this.onSubscriberLeaving(subscriber));
-            yield subscriber.initialize();
-            this.props.onParticipantJoined(subscriber);
+            try {
+                yield subscriber.initialize();
+                this.setState({
+                    [subscriber.id]: subscriber
+                }, () => {
+                    this.props.onParticipantJoined(subscriber);
+                });
+            }
+            catch (error) {
+                this.props.onError(error);
+            }
         });
         this.renderVideo = (subscriber) => {
             if (this.props.renderStream) {
@@ -8383,15 +8353,18 @@ class JanusVideoRoom extends React.Component {
                 React.createElement(Video, { id: subscriber.id, muted: false, style: this.styles.video, stream: subscriber.stream }));
         };
         this.renderLocalVideo = () => {
-            const publisher = this.client.publisher;
+            const publisher = this.state.publisher;
+            if (!publisher) {
+                return null;
+            }
             if (this.props.renderLocalStream(publisher)) {
                 return this.props.renderLocalStream(publisher);
             }
-            return React.createElement("div", { style: this.styles.localVideoContainer },
-                React.createElement(Video, { id: publisher.id, muted: true, style: this.styles.localVideo, stream: publisher.stream }));
+            return (React.createElement("div", { style: this.styles.localVideoContainer },
+                React.createElement(Video, { id: publisher.id, muted: true, style: this.styles.localVideo, stream: publisher.stream })));
         };
         this.renderContainer = () => {
-            const subscribers = Object.values(this.client.subscribers);
+            const subscribers = Object.values(this.state.subscribers).filter((element) => element && element.ptype === "subscriber");
             const content = (React.createElement(React.Fragment, null,
                 this.renderLocalVideo(),
                 subscribers.map((subscriber) => {
@@ -8402,28 +8375,40 @@ class JanusVideoRoom extends React.Component {
             }
             return React.createElement("div", { style: this.styles.container }, content);
         };
-        this.state = {};
+        this.state = {
+            publisher: null,
+        };
+        this.connected = false;
         const customStyles = this.props.customStyles || {};
         this.styles = Object.assign({ video: {}, container: {}, videoContainer: {}, localVideo: {}, localVideoContainer: {} }, customStyles);
     }
     componentDidMount() {
-        const { server } = this.props;
+        const { server, generateId } = this.props;
+        const rtcConfiguration = this.props.rtcConfiguration || {
+            "iceServers": [{
+                    urls: "stun:stun.voip.eutelia.it:3478"
+                }],
+            "sdpSemantics": "unified-plan"
+        };
         this.client = new JanusClient({
+            onPublisher: this.onPublisher,
+            onSubscriber: this.onSubscriber,
+            onError: (error) => this.props.onError(error),
+            generateId,
             server,
             logger,
             WebSocket: ReconnectingWebSocket,
-            onPublisher: this.onPublisher,
-            onSubscriber: this.onSubscriber,
-            onError: (error) => {
-                this.props.onError(error);
-            },
-            generateId: () => getId()
+            subscriberRtcConfiguration: rtcConfiguration,
+            publisherRtcConfiguration: rtcConfiguration,
+            mediaConstraints: this.props.mediaConstraints || {},
+            transactionTimeout: 5000,
+            keepAliveInterval: 20000
         });
         this.client.initialize()
             .then(() => (this.client.getRooms()))
             .then(({ load }) => {
             this.props.onRooms(load);
-            this.connected = true;
+            this.connected = false;
         })
             .catch((error) => {
             this.props.onError(error);
@@ -8434,11 +8419,14 @@ class JanusVideoRoom extends React.Component {
             this.changeRoom(prevProps);
         }
     }
+    componentDidCatch(error, info) {
+        this.props.onError(error);
+        logger.info(info);
+    }
     componentWillUnmount() {
-        this.connected = false;
         this.client.terminate()
             .then(() => {
-            this.props.onDisconnected();
+            return this.props.onDisconnected();
         })
             .catch((error) => {
             this.props.onError(error);

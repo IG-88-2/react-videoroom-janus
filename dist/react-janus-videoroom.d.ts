@@ -9,8 +9,10 @@ interface CustomStyles {
 interface JanusVideoRoomProps {
     server: string;
     room: string;
+    generateId: () => string;
     onConnected: (publisher: any) => void;
     onDisconnected: (error?: any) => void;
+    onPublisherDisconnected: (publisher: any) => void;
     onRooms: (rooms: any) => void;
     onError: (error: any) => void;
     onParticipantJoined: (participant: any) => void;
@@ -18,17 +20,22 @@ interface JanusVideoRoomProps {
     renderContainer: (children: any) => any;
     renderStream: (subscriber: any) => any;
     renderLocalStream: (publisher: any) => any;
-    customStyles: CustomStyles;
+    rtcConfiguration?: any;
+    mediaConstraints?: any;
+    customStyles?: CustomStyles;
 }
 interface JanusVideoRoomState {
+    publisher: any;
+    [id: string]: any;
 }
 export declare class JanusVideoRoom extends Component<JanusVideoRoomProps, JanusVideoRoomState> {
     client: any;
-    connected: boolean;
     styles: CustomStyles;
+    connected: boolean;
     constructor(props: any);
     componentDidMount(): void;
     componentDidUpdate(prevProps: JanusVideoRoomProps): void;
+    componentDidCatch(error: any, info: any): void;
     componentWillUnmount(): void;
     changeRoom: (prevProps: JanusVideoRoomProps) => void;
     onPublisherTerminated: (publisher: any) => () => void;
