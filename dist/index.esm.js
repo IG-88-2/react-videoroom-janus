@@ -8221,40 +8221,6 @@ var C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient =
 var client = unwrapExports(C__Users_clint_Desktop_reactJanusVideoroom_node_modules_janusGatewayClient);
 
 const { JanusClient } = client;
-let enabled = false;
-const logger = {
-    enable: () => {
-        enabled = true;
-    },
-    disable: () => {
-        enabled = false;
-    },
-    success: (...args) => {
-        if (enabled) {
-            console.log(...args);
-        }
-    },
-    info: (...args) => {
-        if (enabled) {
-            console.log(...args);
-        }
-    },
-    error: (error) => {
-        if (enabled) {
-            console.error(error);
-        }
-    },
-    json: (...args) => {
-        if (enabled) {
-            console.log(...args);
-        }
-    },
-    tag: (tag, type) => (...args) => {
-        if (enabled) {
-            console.log(tag, type, ...args);
-        }
-    }
-};
 class Video extends Component {
     constructor(props) {
         super(props);
@@ -8372,11 +8338,65 @@ class JanusVideoRoom extends Component {
             return createElement("div", { style: this.styles.container }, content);
         };
         this.state = {
-            publisher: null,
+            connected: false,
+            publisher: null
         };
-        this.connected = false;
+        this.loggerEnabled = true;
         const customStyles = this.props.customStyles || {};
         this.styles = Object.assign({ video: {}, container: {}, videoContainer: {}, localVideo: {}, localVideoContainer: {} }, customStyles);
+        this.logger = {
+            enable: () => {
+                this.loggerEnabled = true;
+            },
+            disable: () => {
+                this.loggerEnabled = false;
+            },
+            success: (...args) => {
+                if (this.loggerEnabled) {
+                    if (this.props.logger && this.props.logger.success) {
+                        this.props.logger.success(...args);
+                    }
+                    else {
+                        console.log(...args);
+                    }
+                }
+            },
+            info: (...args) => {
+                if (this.loggerEnabled) {
+                    if (this.props.logger && this.props.logger.info) {
+                        this.props.logger.info(...args);
+                    }
+                    else {
+                        console.log(...args);
+                    }
+                }
+            },
+            error: (error) => {
+                if (this.loggerEnabled) {
+                    if (this.props.logger && this.props.logger.error) {
+                        this.props.logger.error(error);
+                    }
+                    else {
+                        console.error(error);
+                    }
+                }
+            },
+            json: (...args) => {
+                if (this.loggerEnabled) {
+                    if (this.props.logger && this.props.logger.json) {
+                        this.props.logger.json(...args);
+                    }
+                    else {
+                        console.log(...args);
+                    }
+                }
+            },
+            tag: (tag, type) => (...args) => {
+                if (this.loggerEnabled) {
+                    console.log(tag, type, ...args);
+                }
+            }
+        };
     }
     componentDidMount() {
         const { server, generateId } = this.props;
@@ -8392,7 +8412,7 @@ class JanusVideoRoom extends Component {
             onError: (error) => this.props.onError(error),
             generateId,
             server,
-            logger,
+            logger: this.logger,
             WebSocket: ReconnectingWebSocket,
             subscriberRtcConfiguration: rtcConfiguration,
             publisherRtcConfiguration: rtcConfiguration,
@@ -8404,7 +8424,9 @@ class JanusVideoRoom extends Component {
             .then(() => (this.client.getRooms()))
             .then(({ load }) => {
             this.props.onRooms(load);
-            this.connected = false;
+            this.setState({
+                connected: true
+            });
         })
             .catch((error) => {
             this.props.onError(error);
@@ -8417,19 +8439,23 @@ class JanusVideoRoom extends Component {
     }
     componentDidCatch(error, info) {
         this.props.onError(error);
-        logger.info(info);
+        this.logger.info(info);
     }
     componentWillUnmount() {
         this.client.terminate()
             .then(() => {
-            return this.props.onDisconnected();
+            this.setState({
+                connected: false
+            }, () => {
+                return this.props.onDisconnected();
+            });
         })
             .catch((error) => {
             this.props.onError(error);
         });
     }
     render() {
-        if (!this.client) {
+        if (!this.client || !this.state.connected) {
             return null;
         }
         return this.renderContainer();

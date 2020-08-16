@@ -20,18 +20,21 @@ interface JanusVideoRoomProps {
     renderContainer: (children: any) => any;
     renderStream: (subscriber: any) => any;
     renderLocalStream: (publisher: any) => any;
+    logger?: any;
     rtcConfiguration?: any;
     mediaConstraints?: any;
     customStyles?: CustomStyles;
 }
 interface JanusVideoRoomState {
+    connected: boolean;
     publisher: any;
     [id: string]: any;
 }
 export declare class JanusVideoRoom extends Component<JanusVideoRoomProps, JanusVideoRoomState> {
     client: any;
     styles: CustomStyles;
-    connected: boolean;
+    logger: any;
+    loggerEnabled: boolean;
     constructor(props: any);
     componentDidMount(): void;
     componentDidUpdate(prevProps: JanusVideoRoomProps): void;

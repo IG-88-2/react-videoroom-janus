@@ -95,6 +95,7 @@ interface JanusVideoRoomProps {
 
 
 interface JanusVideoRoomState {
+	connected:boolean,
 	publisher:any,
 	[id:string]:any
 }
@@ -104,7 +105,6 @@ interface JanusVideoRoomState {
 export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoomState> {
 	client:any
 	styles:CustomStyles
-	connected:boolean
 	logger:any
 	loggerEnabled:boolean
 
@@ -113,11 +113,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
         super(props);
 
 		this.state = {
-			publisher:null,
-
+			connected:false,
+			publisher:null
 		};
-		
-		this.connected = false;
 		
 		this.loggerEnabled = true;
 
@@ -245,8 +243,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		.then(({ load }) => {
 
 			this.props.onRooms(load);
-
-			this.connected = false;
+			
+			this.setState({
+				connected: true
+			});
 
 		})
 		.catch((error) => {
@@ -283,9 +283,15 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		
 		this.client.terminate()
 		.then(() => {
-			
-			return this.props.onDisconnected();
 
+			this.setState({
+				connected: false
+			}, () => {
+
+				return this.props.onDisconnected();
+
+			});
+			
 		})
 		.catch((error) => {
 
@@ -511,7 +517,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
     render() {
 
-		if (!this.client) {
+		if (!this.client || !this.state.connected) {
 			return null;
 		}
 		
