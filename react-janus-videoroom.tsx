@@ -94,28 +94,22 @@ interface JanusVideoRoomProps {
 
 
 
-interface JanusVideoRoomState {
-	connected:boolean,
-	publisher:any,
-	[id:string]:any
-}
+interface JanusVideoRoomState {}
 
 
 
 export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoomState> {
 	client:any
-	styles:CustomStyles
 	logger:any
+	styles:CustomStyles
+	connected:boolean
 	loggerEnabled:boolean
 
     constructor(props) {
 
         super(props);
 
-		this.state = {
-			connected:false,
-			publisher:null
-		};
+		this.state = {};
 		
 		this.loggerEnabled = true;
 
@@ -244,9 +238,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 			this.props.onRooms(load);
 			
-			this.setState({
-				connected: true
-			});
+			this.connected = true;
+
+			this.forceUpdate();
 
 		})
 		.catch((error) => {
@@ -284,13 +278,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		this.client.terminate()
 		.then(() => {
 
-			this.setState({
-				connected: false
-			}, () => {
-
-				return this.props.onDisconnected();
-
-			});
+			this.connected = false;
+				
+			return this.props.onDisconnected();
 			
 		})
 		.catch((error) => {
@@ -310,6 +300,11 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			.then(() => {
 				return this.client.join(this.props.room);
 			})
+			.then(() => {
+
+				this.forceUpdate();
+
+			})
 			.catch((error) => {
 
 				this.props.onError(error);
@@ -317,6 +312,11 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			});
 		} else {
 			this.client.join(this.props.room)
+			.then(() => {
+
+				this.forceUpdate();
+
+			})
 			.catch((error) => {
 
 				this.props.onError(error);
@@ -330,23 +330,15 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onPublisherTerminated = (publisher) => () => {
 		
-		this.setState({
-			publisher:null
-		});
-
+		this.props.onPublisherDisconnected(publisher);
+		
 	}
 
 
 
 	onPublisherDisconnected = (publisher) => () => {
 		
-		this.setState({
-			publisher:null
-		}, () => {
-
-			this.props.onPublisherDisconnected(publisher);
-
-		});
+		this.props.onPublisherDisconnected(publisher);
 		
 	}
 
@@ -357,8 +349,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		publisher.addEventListener("terminated", this.onPublisherTerminated(publisher));
 	
 		publisher.addEventListener("disconnected", this.onPublisherDisconnected(publisher));
-
+		
 		this.props.onConnected(publisher);
+
+		this.forceUpdate();
 
 	}
 
@@ -366,13 +360,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onSubscriberTerminated = (subscriber) => () => {
 		
-		this.setState({
-			[subscriber.id]: undefined
-		}, () => {
+		this.props.onParticipantLeft(subscriber);
 
-			this.props.onParticipantLeft(subscriber);
-
-		});
+		this.forceUpdate();
 		
 	}
 
@@ -380,28 +370,20 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onSubscriberLeaving = (subscriber) => () => {
 		
-		this.setState({
-			[subscriber.id]: undefined
-		}, () => {
+		this.props.onParticipantLeft(subscriber);
 
-			this.props.onParticipantLeft(subscriber);
-
-		});
-			
+		this.forceUpdate();
+		
 	}
 
 
 
 	onSubscriberDisconnected = (subscriber) => () => {
 		
-		this.setState({
-			[subscriber.id]: undefined
-		}, () => {
-
-			this.props.onParticipantLeft(subscriber);
-
-		});
-			
+		this.props.onParticipantLeft(subscriber);
+		
+		this.forceUpdate();
+		
 	}
 
 
@@ -417,14 +399,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		try {
 
 			await subscriber.initialize();
+			
+			this.props.onParticipantJoined(subscriber);
 
-			this.setState({
-				[subscriber.id]: subscriber
-			}, () => {
-
-				this.props.onParticipantJoined(subscriber);
-
-			});
+			this.forceUpdate();
 			
 		} catch(error) {
 			
@@ -457,13 +435,13 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	renderLocalVideo = () => {
 
-		const publisher = this.state.publisher;
+		const publisher = this.client.publisher;
 
 		if (!publisher) {
 			return null;
 		}
 
-		if (this.props.renderLocalStream(publisher)) {
+		if (this.props.renderLocalStream) {
 			return this.props.renderLocalStream(publisher);
 		}
 
@@ -483,8 +461,12 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	
 
 	renderContainer = () => {
+
+		if (!this.client || !this.client.subscribers) {
+			return null;
+		}
 		
-		const subscribers = Object.values(this.state.subscribers).filter((element:any) => element && element.ptype==="subscriber");
+		const subscribers = Object.values(this.client.subscribers).filter((element:any) => element && element.ptype==="subscriber");
 
 		const content = (
 			<Fragment>
@@ -517,7 +499,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
     render() {
 
-		if (!this.client || !this.state.connected) {
+		if (!this.client) {
 			return null;
 		}
 		

@@ -1,6 +1,6 @@
 {
   "name": "react-videoroom-janus",
-  "version": "0.0.43",
+  "version": "0.0.49",
   "description": "react-videoroom-janus",
   "author": "Anatoly Strashkevich",
   "copyright": "Copyright © 2020 Janus",
@@ -27,6 +27,7 @@
     "janus-gateway-client": "0.0.32",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
+    "reconnecting-websocket": "^4.4.0",
     "rollup": "^2.23.1",
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-copy": "^3.3.0",

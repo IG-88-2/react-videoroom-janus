@@ -26,14 +26,12 @@ interface JanusVideoRoomProps {
     customStyles?: CustomStyles;
 }
 interface JanusVideoRoomState {
-    connected: boolean;
-    publisher: any;
-    [id: string]: any;
 }
 export declare class JanusVideoRoom extends Component<JanusVideoRoomProps, JanusVideoRoomState> {
     client: any;
-    styles: CustomStyles;
     logger: any;
+    styles: CustomStyles;
+    connected: boolean;
     loggerEnabled: boolean;
     constructor(props: any);
     componentDidMount(): void;
