@@ -17,9 +17,9 @@ interface JanusVideoRoomProps {
     onError: (error: any) => void;
     onParticipantJoined: (participant: any) => void;
     onParticipantLeft: (participant: any) => void;
-    renderContainer: (children: any) => any;
-    renderStream: (subscriber: any) => any;
-    renderLocalStream: (publisher: any) => any;
+    renderContainer?: (children: any) => any;
+    renderStream?: (subscriber: any) => any;
+    renderLocalStream?: (publisher: any) => any;
     logger?: any;
     rtcConfiguration?: any;
     mediaConstraints?: any;

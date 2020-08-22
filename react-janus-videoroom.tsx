@@ -1,8 +1,7 @@
 import * as React from 'react';
 import ReconnectingWebSocket from 'reconnecting-websocket';
-import client from 'janus-gateway-client';
 import { Component, Fragment } from 'react';
-const { JanusClient } = client;
+import { JanusClient } from 'janus-gateway-client';
 
 
 
@@ -23,6 +22,7 @@ interface VideoState {
 
 class Video extends Component<VideoProps,VideoState> {
 	video:any
+	container:any 
 
 	constructor(props) {
 
@@ -33,8 +33,21 @@ class Video extends Component<VideoProps,VideoState> {
 
 
 	componentDidMount() {
-
+		
 		this.video.srcObject = this.props.stream;
+	
+		this.video.play();
+
+	}
+
+
+
+	componentWillReceiveProps(nextProps) {
+		
+		if (nextProps.stream!==this.props.stream) {
+			this.video.srcObject = nextProps.stream;
+			this.video.play();
+		}
 
 	}
 
@@ -51,11 +64,10 @@ class Video extends Component<VideoProps,VideoState> {
 		return <video
 			id={id}
 			muted={muted}
-			autoPlay
 			style={style}
 			ref={(video) => { this.video = video; }}
 		/>
-
+		
 	}
 
 }
@@ -83,57 +95,74 @@ interface JanusVideoRoomProps {
 	onError:(error:any) => void,
 	onParticipantJoined:(participant:any) => void,
 	onParticipantLeft:(participant:any) => void,
-	renderContainer:(children:any) => any,
-	renderStream:(subscriber:any) => any,
-	renderLocalStream:(publisher:any) => any,
+	renderContainer?:(children:any) => any,
+	renderStream?:(subscriber:any) => any,
+	renderLocalStream?:(publisher:any) => any,
 	logger?:any,
 	rtcConfiguration?:any,
 	mediaConstraints?:any,
-	customStyles?:CustomStyles
+	getCustomStyles?:(nParticipants:number) => CustomStyles
 }
 
 
 
-interface JanusVideoRoomState {}
+interface JanusVideoRoomState {
+	styles:CustomStyles
+}
 
 
 
 export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoomState> {
 	client:any
 	logger:any
-	styles:CustomStyles
 	connected:boolean
+	defaultStyles:any
 	loggerEnabled:boolean
+	nParticipants:number
 
     constructor(props) {
 
-        super(props);
-
-		this.state = {};
+		super(props);
 		
 		this.loggerEnabled = true;
 
-		const customStyles = this.props.customStyles || {};
+		let customStyles = {};
 
-		this.styles = {
-			video:{
+		if (this.props.getCustomStyles) {
+			customStyles = this.props.getCustomStyles(0);
+		}
 
-			},
+		this.defaultStyles = {
 			container:{
-				
+				height: `100%`,
+				width: `100%`,
+				position: `relative`
+			},
+			video:{
+				width: `100%`,
 			},
 			videoContainer:{
-				
+				width: `100%`,
+				height: `100%`
 			},
 			localVideo:{
-				
+				width: `200px`,
+				height: `auto`
 			},
 			localVideoContainer:{
-				
-			},
-			...customStyles
+				position: `absolute`,
+				top: `50px`,
+				right: `50px`
+			}
 		};
 
+		this.state = {
+			styles: {
+				...this.defaultStyles,
+				...customStyles
+			}
+		};
+		
 		this.logger = {
 			enable: () => {
 		
@@ -202,7 +231,29 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 
+	cleanup = () => {
+
+		return this.client.terminate()
+		.then(() => {
+
+			this.connected = false;
+				
+			return this.props.onDisconnected();
+			
+		})
+		.catch((error) => {
+
+			this.props.onError(error);
+			
+		});
+
+	}
+
+
+
     componentDidMount() {
+
+		window.addEventListener('beforeunload', this.cleanup);
 
 		const { server, generateId } = this.props;
 
@@ -223,9 +274,8 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			WebSocket: ReconnectingWebSocket,
 			subscriberRtcConfiguration: rtcConfiguration,
 			publisherRtcConfiguration: rtcConfiguration,
-			mediaConstraints: this.props.mediaConstraints || {},
-			transactionTimeout: 5000,
-			keepAliveInterval: 20000
+			transactionTimeout: 15000,
+			keepAliveInterval: 10000
 		});
 	
 		this.client.initialize()
@@ -255,8 +305,8 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	componentDidUpdate(prevProps:JanusVideoRoomProps) {
 
-		if (prevProps.room!==this.props.room && this.props.room) {
-			this.changeRoom(prevProps);
+		if (prevProps.room!==this.props.room) {
+			this.onChangeRoom(prevProps);
 		}
 
 	}
@@ -274,31 +324,38 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 	componentWillUnmount() {
-		
-		this.client.terminate()
-		.then(() => {
 
-			this.connected = false;
-				
-			return this.props.onDisconnected();
-			
-		})
-		.catch((error) => {
+		this.cleanup();
 
-			this.props.onError(error);
+		window.removeEventListener('beforeunload', this.cleanup);
 
-		});
-						
 	}
 	
 
 
-	changeRoom = (prevProps:JanusVideoRoomProps) => {
+	onChangeRoom = (prevProps:JanusVideoRoomProps) => {
 
-		if (prevProps.room) {
-			this.client.leave()
+		const { mediaConstraints } = this.props;
+		const left = prevProps.room && !this.props.room;
+		const join = !prevProps.room && this.props.room;
+		const change = prevProps.room && this.props.room && prevProps.room!==this.props.room;
+		
+		if (left) { 
+			return this.client.leave()
 			.then(() => {
-				return this.client.join(this.props.room);
+
+				this.forceUpdate();
+
+			})
+			.catch((error) => {
+
+				this.props.onError(error);
+
+			});
+		} else if (change) {
+			return this.client.leave()
+			.then(() => {
+				return this.client.join(this.props.room, mediaConstraints);
 			})
 			.then(() => {
 
@@ -308,10 +365,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			.catch((error) => {
 
 				this.props.onError(error);
-	
+
 			});
-		} else {
-			this.client.join(this.props.room)
+		} else if (join) {
+			this.client.join(this.props.room, mediaConstraints)
 			.then(() => {
 
 				this.forceUpdate();
@@ -362,6 +419,13 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		
 		this.props.onParticipantLeft(subscriber);
 
+		const subscribers = this.getSubscribers();
+			
+		if (this.nParticipants!==subscribers.length) {
+			this.nParticipants = subscribers.length;
+			this.onParticipantsAmountChange();
+		}
+
 		this.forceUpdate();
 		
 	}
@@ -372,6 +436,13 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		
 		this.props.onParticipantLeft(subscriber);
 
+		const subscribers = this.getSubscribers();
+			
+		if (this.nParticipants!==subscribers.length) {
+			this.nParticipants = subscribers.length;
+			this.onParticipantsAmountChange();
+		}
+
 		this.forceUpdate();
 		
 	}
@@ -381,7 +452,14 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	onSubscriberDisconnected = (subscriber) => () => {
 		
 		this.props.onParticipantLeft(subscriber);
-		
+
+		const subscribers = this.getSubscribers();
+			
+		if (this.nParticipants!==subscribers.length) {
+			this.nParticipants = subscribers.length;
+			this.onParticipantsAmountChange();
+		}
+
 		this.forceUpdate();
 		
 	}
@@ -402,6 +480,13 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			
 			this.props.onParticipantJoined(subscriber);
 
+			const subscribers = this.getSubscribers();
+			
+			if (this.nParticipants!==subscribers.length) {
+				this.nParticipants = subscribers.length;
+				this.onParticipantsAmountChange();
+			}
+
 			this.forceUpdate();
 			
 		} catch(error) {
@@ -420,11 +505,14 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			return this.props.renderStream(subscriber);
 		}
 
-		return <div style={this.styles.videoContainer}>
+		return <div 
+			key={`subscriber-${subscriber.id}`}
+			style={this.state.styles.videoContainer}
+		>
 			<Video
 				id={subscriber.id}
 				muted={false}
-				style={this.styles.video}
+				style={this.state.styles.video}
 				stream={subscriber.stream}
 			/>
 		</div>
@@ -445,12 +533,14 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			return this.props.renderLocalStream(publisher);
 		}
 
+		this.logger.info('render publisher', publisher);
+		
 		return (
-			<div style={this.styles.localVideoContainer}>
+			<div style={this.state.styles.localVideoContainer}>
 				<Video
 					id={publisher.id}
 					muted={true}
-					style={this.styles.localVideo}
+					style={this.state.styles.localVideo}
 					stream={publisher.stream}
 				/>
 			</div>
@@ -458,6 +548,18 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	}
 
+
+
+	getSubscribers = () => {
+
+		if (!this.client || !this.client.subscribers) {
+			return [];
+		}
+
+		return Object.values(this.client.subscribers).filter((element:any) => element && element.ptype==="subscriber");
+
+	}
+	
 	
 
 	renderContainer = () => {
@@ -466,8 +568,8 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			return null;
 		}
 		
-		const subscribers = Object.values(this.client.subscribers).filter((element:any) => element && element.ptype==="subscriber");
-
+		const subscribers = this.getSubscribers();
+		
 		const content = (
 			<Fragment>
 				{
@@ -487,12 +589,30 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			return this.props.renderContainer(content);
 		}
 
-		return <div
-			style={this.styles.container}
-		>
+		return <div style={this.state.styles.container}>
 			{content}
 		</div>
 
+	}
+
+
+
+	onParticipantsAmountChange = () => {
+		
+		const { getCustomStyles } = this.props;
+
+		if (getCustomStyles) {
+			const styles = getCustomStyles(this.nParticipants);
+			if (styles) {
+				this.setState({
+					styles: {
+						...this.defaultStyles,
+						...styles
+					}
+				});
+			}
+		}
+		
 	}
 
 
