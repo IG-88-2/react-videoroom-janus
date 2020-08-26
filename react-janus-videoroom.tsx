@@ -1,7 +1,10 @@
 import * as React from 'react';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { Component, Fragment } from 'react';
-import { JanusClient } from 'janus-gateway-client';
+import { JanusClient } from './janus-gateway-client/janus-gateway-client';
+import { interval, Subscription, merge, fromEvent, from, Subject, empty, of } from 'rxjs';
+import { mergeMap, tap, filter, delayWhen, concatMap, map, delay, scan, startWith, switchMap, takeUntil, catchError, retryWhen } from 'rxjs/operators';
+const uuidv1 = require('uuid').v1;
 
 
 
@@ -87,7 +90,6 @@ interface CustomStyles {
 interface JanusVideoRoomProps {
 	server:string,
 	room:string,
-	generateId:() => string,
 	onConnected:(publisher:any) => void,
 	onDisconnected:(error?:any) => void,
 	onPublisherDisconnected:(publisher:any) => void,
@@ -100,6 +102,8 @@ interface JanusVideoRoomProps {
 	renderLocalStream?:(publisher:any) => any,
 	logger?:any,
 	rtcConfiguration?:any,
+	camera?:any,
+	user_id?:any,
 	mediaConstraints?:any,
 	getCustomStyles?:(nParticipants:number) => CustomStyles
 }
@@ -119,6 +123,8 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	defaultStyles:any
 	loggerEnabled:boolean
 	nParticipants:number
+	tasks:Subject<any>
+	s:Subscription
 
     constructor(props) {
 
@@ -162,6 +168,8 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 				...customStyles
 			}
 		};
+
+		this.tasks = new Subject();
 		
 		this.logger = {
 			enable: () => {
@@ -233,6 +241,11 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	cleanup = () => {
 
+		if (this.s) {
+			this.s.unsubscribe();
+			this.s = undefined;
+		}
+
 		return this.client.terminate()
 		.then(() => {
 
@@ -255,7 +268,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 		window.addEventListener('beforeunload', this.cleanup);
 
-		const { server, generateId } = this.props;
+		const { server } = this.props;
 
 		const rtcConfiguration = this.props.rtcConfiguration || {
 			"iceServers": [{
@@ -263,14 +276,39 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			}],
 			"sdpSemantics" : "unified-plan"
 		};
+
+		const user_id = this.props.user_id || uuidv1();
 		
+		this.s = this.tasks
+		.pipe(
+			concatMap(({
+				type,
+				load
+			}) => {
+
+				if (type==="room") {
+					return from(
+						this.onChangeRoom(load)
+					);
+				} else if (type==="camera") {
+					return from(
+						this.onChangeCamera()
+					);
+				}
+				
+			})
+		)
+		.subscribe(() => {
+
+		});
+
 		this.client = new JanusClient({
 			onPublisher: this.onPublisher,
 			onSubscriber: this.onSubscriber,
 			onError: (error) => this.props.onError(error),
-			generateId,
+			user_id,
 			server,
-			logger:this.logger,
+			logger: this.logger,
 			WebSocket: ReconnectingWebSocket,
 			subscriberRtcConfiguration: rtcConfiguration,
 			publisherRtcConfiguration: rtcConfiguration,
@@ -306,8 +344,89 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	componentDidUpdate(prevProps:JanusVideoRoomProps) {
 
 		if (prevProps.room!==this.props.room) {
-			this.onChangeRoom(prevProps);
+			this.tasks.next({
+				type:"room",
+				load:prevProps.room
+			});
 		}
+
+		if (prevProps.camera!==this.props.camera) {
+			this.tasks.next({
+				type:"camera"
+			});
+		}
+
+	}
+
+
+
+	onChangeCamera = async () => {
+
+		if (
+			!this.props.camera || 
+			!this.client || 
+			!this.client.publisher ||
+			!this.client.publisher.pc ||
+			!this.client.publisher.stream 
+		) {
+			return;
+		}
+		
+		try {
+			await this.client.replaceVideoTrack(this.props.camera.value);
+		} catch(error) {
+			this.props.onError(error);
+		}
+		
+		this.forceUpdate();
+		
+	}
+
+
+
+	onChangeRoom = async (prevRoom:string) => {
+
+		const { mediaConstraints, onError } = this.props;
+		const leave = prevRoom && !this.props.room;
+		const join = !prevRoom && this.props.room;
+		const change = prevRoom && this.props.room && prevRoom!==this.props.room;
+
+		let constraints = null;
+
+		if (this.props.camera) {
+			constraints = {
+				video: { 
+					deviceId: { 
+						exact: this.props.camera.value
+					}
+				}
+			}
+		} else if (mediaConstraints) {
+			constraints = mediaConstraints;
+		} else {
+			constraints = {
+				video: true,
+				audio: true
+			};
+		}
+
+		if (leave || change) {
+			try {
+				await this.client.leave();
+			} catch(error) {
+				onError(error);
+			}
+		}
+
+		if (change || join) {
+			try {
+				await this.client.join(this.props.room, mediaConstraints);
+			} catch(error) {
+				onError(error);
+			}
+		}
+		
+		this.forceUpdate();
 
 	}
 
@@ -330,60 +449,8 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		window.removeEventListener('beforeunload', this.cleanup);
 
 	}
+
 	
-
-
-	onChangeRoom = (prevProps:JanusVideoRoomProps) => {
-
-		const { mediaConstraints } = this.props;
-		const left = prevProps.room && !this.props.room;
-		const join = !prevProps.room && this.props.room;
-		const change = prevProps.room && this.props.room && prevProps.room!==this.props.room;
-		
-		if (left) { 
-			return this.client.leave()
-			.then(() => {
-
-				this.forceUpdate();
-
-			})
-			.catch((error) => {
-
-				this.props.onError(error);
-
-			});
-		} else if (change) {
-			return this.client.leave()
-			.then(() => {
-				return this.client.join(this.props.room, mediaConstraints);
-			})
-			.then(() => {
-
-				this.forceUpdate();
-
-			})
-			.catch((error) => {
-
-				this.props.onError(error);
-
-			});
-		} else if (join) {
-			this.client.join(this.props.room, mediaConstraints)
-			.then(() => {
-
-				this.forceUpdate();
-
-			})
-			.catch((error) => {
-
-				this.props.onError(error);
-	
-			});
-		}
-
-	}
-
-
 
 	onPublisherTerminated = (publisher) => () => {
 		
