@@ -2,8 +2,8 @@ import * as React from 'react';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { Component, Fragment } from 'react';
 import { JanusClient } from './janus-gateway-client/janus-gateway-client';
-import { interval, Subscription, merge, fromEvent, from, Subject, empty, of } from 'rxjs';
-import { mergeMap, tap, filter, delayWhen, concatMap, map, delay, scan, startWith, switchMap, takeUntil, catchError, retryWhen } from 'rxjs/operators';
+import { Subscription, from, Subject } from 'rxjs';
+import { concatMap } from 'rxjs/operators';
 const uuidv1 = require('uuid').v1;
 
 
@@ -25,7 +25,7 @@ interface VideoState {
 
 class Video extends Component<VideoProps,VideoState> {
 	video:any
-	container:any 
+	container:any
 
 	constructor(props) {
 
@@ -65,7 +65,7 @@ class Video extends Component<VideoProps,VideoState> {
 		} = this.props;
 
 		return <video
-			id={id}
+			id={`video-${id}`}
 			muted={muted}
 			style={style}
 			ref={(video) => { this.video = video; }}
@@ -102,7 +102,7 @@ interface JanusVideoRoomProps {
 	renderLocalStream?:(publisher:any) => any,
 	logger?:any,
 	rtcConfiguration?:any,
-	camera?:any,
+	cameraId?:any,
 	user_id?:any,
 	mediaConstraints?:any,
 	getCustomStyles?:(nParticipants:number) => CustomStyles
@@ -350,7 +350,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			});
 		}
 
-		if (prevProps.camera!==this.props.camera) {
+		if (prevProps.cameraId!==this.props.cameraId) {
 			this.tasks.next({
 				type:"camera"
 			});
@@ -363,7 +363,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	onChangeCamera = async () => {
 
 		if (
-			!this.props.camera || 
+			!this.props.cameraId ||
 			!this.client || 
 			!this.client.publisher ||
 			!this.client.publisher.pc ||
@@ -373,7 +373,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 		}
 		
 		try {
-			await this.client.replaceVideoTrack(this.props.camera.value);
+			await this.client.replaceVideoTrack(this.props.cameraId);
 		} catch(error) {
 			this.props.onError(error);
 		}
@@ -393,11 +393,11 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 		let constraints = null;
 
-		if (this.props.camera) {
+		if (this.props.cameraId) {
 			constraints = {
 				video: { 
 					deviceId: { 
-						exact: this.props.camera.value
+						exact: this.props.cameraId
 					}
 				}
 			}
@@ -656,9 +656,11 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			return this.props.renderContainer(content);
 		}
 
-		return <div style={this.state.styles.container}>
-			{content}
-		</div>
+		return (
+			<div style={this.state.styles.container}>
+				{content}
+			</div>
+		);
 
 	}
 
