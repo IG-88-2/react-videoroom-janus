@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { Subscription, Subject } from 'rxjs';
 interface CustomStyles {
     video?: any;
     container?: any;
@@ -21,7 +22,7 @@ interface JanusVideoRoomProps {
     renderLocalStream?: (publisher: any) => any;
     logger?: any;
     rtcConfiguration?: any;
-    camera?: any;
+    cameraId?: any;
     user_id?: any;
     mediaConstraints?: any;
     getCustomStyles?: (nParticipants: number) => CustomStyles;
@@ -36,12 +37,14 @@ export declare class JanusVideoRoom extends Component<JanusVideoRoomProps, Janus
     defaultStyles: any;
     loggerEnabled: boolean;
     nParticipants: number;
+    tasks: Subject<any>;
+    s: Subscription;
     constructor(props: any);
     cleanup: () => any;
     componentDidMount(): void;
     componentDidUpdate(prevProps: JanusVideoRoomProps): void;
     onChangeCamera: () => Promise<void>;
-    onChangeRoom: (prevProps: JanusVideoRoomProps) => Promise<void>;
+    onChangeRoom: (prevRoom: string) => Promise<void>;
     componentDidCatch(error: any, info: any): void;
     componentWillUnmount(): void;
     onPublisherTerminated: (publisher: any) => () => void;
