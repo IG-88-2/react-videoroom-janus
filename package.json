@@ -1,14 +1,14 @@
 {
   "name": "react-videoroom-janus",
-  "version": "0.0.6",
+  "version": "0.0.61",
   "description": "react-videoroom-janus",
   "author": "Anatoly Strashkevich",
   "copyright": "Copyright © 2020 Janus",
   "main": "./index.cjs.js",
   "module": "./index.esm.js",
   "browser": "./index.js",
-  "types": "./react-janus-videoroom.d.ts",
-  "repository": "https://github.com/IG-88-2/react-janus-videoroom",
+  "types": "./react-videoroom-janus.d.ts",
+  "repository": "https://github.com/IG-88-2/react-videoroom-janus",
   "keywords": [
     "videoroom",
     "webrtc",

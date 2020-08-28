@@ -20,6 +20,6 @@
     ]
   },
   "include": [
-    "react-janus-videoroom.tsx"
+    "react-videoroom-janus.tsx"
   ]
 }

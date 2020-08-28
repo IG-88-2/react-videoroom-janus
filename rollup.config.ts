@@ -21,24 +21,24 @@ const external = [
 ];
 
 export default {
-  input: `react-janus-videoroom.tsx`,
+  input: `react-videoroom-janus.tsx`,
   output: [
     {
-      name: 'react-janus-videoroom', 
+      name: 'react-videoroom-janus', 
       file: pkg.browser,
       format: 'umd',
       sourcemap: false,
       globals
     },
     {
-      name: 'react-janus-videoroom', 
+      name: 'react-videoroom-janus', 
       file: pkg.main,
       format: 'cjs',
       sourcemap: false,
       globals
     },
     {
-      name: 'react-janus-videoroom', 
+      name: 'react-videoroom-janus', 
       file: pkg.module,
       format: 'es',
       sourcemap: false,
