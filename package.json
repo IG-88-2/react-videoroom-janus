@@ -1,6 +1,6 @@
 {
   "name": "react-videoroom-janus",
-  "version": "0.0.53",
+  "version": "0.0.6",
   "description": "react-videoroom-janus",
   "author": "Anatoly Strashkevich",
   "copyright": "Copyright © 2020 Janus",
@@ -26,7 +26,7 @@
     "@types/node": "^14.6.0",
     "@types/react": "^16.9.46",
     "@types/react-dom": "^16.9.8",
-    "janus-gateway-client": "^0.0.42",
+    "janus-gateway-client": "^0.0.5",
     "react": "^16.13.1",
     "react-dom": "^16.13.1",
     "reconnecting-websocket": "^4.4.0",
@@ -38,9 +38,8 @@
     "rollup-plugin-sourcemaps": "^0.6.2",
     "rollup-plugin-typescript2": "^0.27.2",
     "ts-loader": "8.0.2",
-    "typescript": "^3.9.7"
-  },
-  "dependencies": {
+    "typescript": "^3.9.7",
     "rxjs": "^6.6.2"
-  }
+  },
+  "dependencies": {}
 }

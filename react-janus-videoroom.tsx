@@ -1,7 +1,7 @@
 import * as React from 'react';
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import { Component, Fragment } from 'react';
-import { JanusClient } from './janus-gateway-client/janus-gateway-client';
+import { JanusClient } from 'janus-gateway-client'; //'./janus-gateway-client/janus-gateway-client';
 import { Subscription, from, Subject } from 'rxjs';
 import { concatMap } from 'rxjs/operators';
 const uuidv1 = require('uuid').v1;
