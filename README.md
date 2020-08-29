@@ -22,6 +22,10 @@ receives messages from clients and dispatches them to correct janus instances (b
 [janus-gateway-videoroom-demo](https://github.com/IG-88-2/janus-gateway-videoroom-demo) - demo app which is making use of
 [react-janus-videoroom](https://github.com/IG-88-2/react-janus-videoroom).  
 
+Docker image herbert1947/janus-gateway-videoroom
+```
+docker pull herbert1947/janus-gateway-videoroom:latest 
+```   
 ## Prerequisites
 
 ## Running the tests
