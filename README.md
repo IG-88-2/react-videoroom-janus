@@ -8,8 +8,8 @@ These diagrams summarize behavior of packages mentioned below.
 This is screenshot from [video](https://www.youtube.com/watch?v=zxRwELmyWU0&t=1s)
 ![alt text](https://github.com/IG-88-2/react-janus-videoroom/blob/master/plan.jpg?raw=true)
 [react-janus-videoroom](https://github.com/IG-88-2/react-janus-videoroom) - contains thin wrapper around
-[janus-gateway-client](https://github.com/IG-88-2/janus-gateway-client) and should provide effortless capability to
-add calls to react app. You just drop this into your app, attach callbacks and it works.  
+[janus-gateway-client](https://github.com/IG-88-2/janus-gateway-client) and should provide capability to
+add janus client functionality in form of react component. You just drop this into your app, attach callbacks and it works.  
 
 [janus-gateway-client](https://github.com/IG-88-2/janus-gateway-client) - logic related to signaling and negotiation between frontend
 and nodejs backend, this is separate package which you have to install in your nodejs app.  
@@ -25,11 +25,7 @@ receives messages from clients and dispatches them to correct janus instances (b
 Docker image herbert1947/janus-gateway-videoroom
 ```
 docker pull herbert1947/janus-gateway-videoroom:latest 
-```   
-## Prerequisites
-
-## Running the tests
-
+```
 ## Deployment
 
 ## DEMO
