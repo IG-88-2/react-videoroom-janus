@@ -90,22 +90,22 @@ interface CustomStyles {
 interface JanusVideoRoomProps {
 	server:string,
 	room:string,
-	onConnected:(publisher:any) => void,
-	onDisconnected:(error?:any) => void,
-	onPublisherDisconnected:(publisher:any) => void,
-	onRooms:(rooms:any) => void,
+	user_id:string,
+	onRooms:(rooms:any[]) => void,
 	onError:(error:any) => void,
-	onParticipantJoined:(participant:any) => void,
-	onParticipantLeft:(participant:any) => void,
+	onConnected?:(publisher:any) => void,
+	onDisconnected?:(error?:any) => void,
+	onPublisherDisconnected?:(publisher:any) => void,
+	onParticipantJoined?:(participant:any) => void,
+	onParticipantLeft?:(participant:any) => void,
 	renderContainer?:(children:any) => any,
 	renderStream?:(subscriber:any) => any,
 	renderLocalStream?:(publisher:any) => any,
+	getCustomStyles?:(nParticipants:number) => CustomStyles,
 	logger?:any,
 	rtcConfiguration?:any,
-	cameraId?:any,
-	user_id?:any,
-	mediaConstraints?:any,
-	getCustomStyles?:(nParticipants:number) => CustomStyles
+	cameraId?:string,
+	mediaConstraints?:any
 }
 
 
@@ -251,8 +251,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 			this.connected = false;
 				
-			return this.props.onDisconnected();
-			
+			if (this.props.onDisconnected) {
+				this.props.onDisconnected();
+			}
+
 		})
 		.catch((error) => {
 
@@ -268,7 +270,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 		window.addEventListener('beforeunload', this.cleanup);
 
-		const { server } = this.props;
+		const { server, user_id } = this.props;
 
 		const rtcConfiguration = this.props.rtcConfiguration || {
 			"iceServers": [{
@@ -276,8 +278,6 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			}],
 			"sdpSemantics" : "unified-plan"
 		};
-
-		const user_id = this.props.user_id || uuidv1();
 		
 		this.s = this.tasks
 		.pipe(
@@ -307,7 +307,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			onSubscriber: this.onSubscriber,
 			onError: (error) => this.props.onError(error),
 			user_id,
-			server,
+			server: `${server}/?id=${user_id}`,
 			logger: this.logger,
 			WebSocket: ReconnectingWebSocket,
 			subscriberRtcConfiguration: rtcConfiguration,
@@ -454,15 +454,19 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onPublisherTerminated = (publisher) => () => {
 		
-		this.props.onPublisherDisconnected(publisher);
-		
+		if (this.props.onPublisherDisconnected) {
+			this.props.onPublisherDisconnected(publisher);
+		}
+
 	}
 
 
 
 	onPublisherDisconnected = (publisher) => () => {
-		
-		this.props.onPublisherDisconnected(publisher);
+
+		if (this.props.onPublisherDisconnected) {
+			this.props.onPublisherDisconnected(publisher);
+		}
 		
 	}
 
@@ -474,7 +478,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 	
 		publisher.addEventListener("disconnected", this.onPublisherDisconnected(publisher));
 		
-		this.props.onConnected(publisher);
+		if (this.props.onConnected) {
+			this.props.onConnected(publisher);
+		}
 
 		this.forceUpdate();
 
@@ -484,7 +490,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 	onSubscriberTerminated = (subscriber) => () => {
 		
-		this.props.onParticipantLeft(subscriber);
+		if (this.props.onParticipantLeft) {
+			this.props.onParticipantLeft(subscriber);
+		}
 
 		const subscribers = this.getSubscribers();
 			
@@ -500,8 +508,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 	onSubscriberLeaving = (subscriber) => () => {
-		
-		this.props.onParticipantLeft(subscriber);
+
+		if (this.props.onParticipantLeft) {
+			this.props.onParticipantLeft(subscriber);
+		}
 
 		const subscribers = this.getSubscribers();
 			
@@ -517,8 +527,10 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 
 	onSubscriberDisconnected = (subscriber) => () => {
-		
-		this.props.onParticipantLeft(subscriber);
+
+		if (this.props.onParticipantLeft) {
+			this.props.onParticipantLeft(subscriber);
+		}
 
 		const subscribers = this.getSubscribers();
 			
@@ -545,7 +557,9 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 
 			await subscriber.initialize();
 			
-			this.props.onParticipantJoined(subscriber);
+			if (this.props.onParticipantJoined) {
+				this.props.onParticipantJoined(subscriber);
+			}
 
 			const subscribers = this.getSubscribers();
 			
