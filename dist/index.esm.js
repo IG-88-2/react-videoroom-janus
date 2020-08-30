@@ -9498,7 +9498,9 @@ class JanusVideoRoom extends Component {
             return this.client.terminate()
                 .then(() => {
                 this.connected = false;
-                return this.props.onDisconnected();
+                if (this.props.onDisconnected) {
+                    this.props.onDisconnected();
+                }
             })
                 .catch((error) => {
                 this.props.onError(error);
@@ -9563,19 +9565,27 @@ class JanusVideoRoom extends Component {
             this.forceUpdate();
         });
         this.onPublisherTerminated = (publisher) => () => {
-            this.props.onPublisherDisconnected(publisher);
+            if (this.props.onPublisherDisconnected) {
+                this.props.onPublisherDisconnected(publisher);
+            }
         };
         this.onPublisherDisconnected = (publisher) => () => {
-            this.props.onPublisherDisconnected(publisher);
+            if (this.props.onPublisherDisconnected) {
+                this.props.onPublisherDisconnected(publisher);
+            }
         };
         this.onPublisher = (publisher) => __awaiter(this, void 0, void 0, function* () {
             publisher.addEventListener("terminated", this.onPublisherTerminated(publisher));
             publisher.addEventListener("disconnected", this.onPublisherDisconnected(publisher));
-            this.props.onConnected(publisher);
+            if (this.props.onConnected) {
+                this.props.onConnected(publisher);
+            }
             this.forceUpdate();
         });
         this.onSubscriberTerminated = (subscriber) => () => {
-            this.props.onParticipantLeft(subscriber);
+            if (this.props.onParticipantLeft) {
+                this.props.onParticipantLeft(subscriber);
+            }
             const subscribers = this.getSubscribers();
             if (this.nParticipants !== subscribers.length) {
                 this.nParticipants = subscribers.length;
@@ -9584,7 +9594,9 @@ class JanusVideoRoom extends Component {
             this.forceUpdate();
         };
         this.onSubscriberLeaving = (subscriber) => () => {
-            this.props.onParticipantLeft(subscriber);
+            if (this.props.onParticipantLeft) {
+                this.props.onParticipantLeft(subscriber);
+            }
             const subscribers = this.getSubscribers();
             if (this.nParticipants !== subscribers.length) {
                 this.nParticipants = subscribers.length;
@@ -9593,7 +9605,9 @@ class JanusVideoRoom extends Component {
             this.forceUpdate();
         };
         this.onSubscriberDisconnected = (subscriber) => () => {
-            this.props.onParticipantLeft(subscriber);
+            if (this.props.onParticipantLeft) {
+                this.props.onParticipantLeft(subscriber);
+            }
             const subscribers = this.getSubscribers();
             if (this.nParticipants !== subscribers.length) {
                 this.nParticipants = subscribers.length;
@@ -9607,7 +9621,9 @@ class JanusVideoRoom extends Component {
             subscriber.addEventListener("disconnected", this.onSubscriberLeaving(subscriber));
             try {
                 yield subscriber.initialize();
-                this.props.onParticipantJoined(subscriber);
+                if (this.props.onParticipantJoined) {
+                    this.props.onParticipantJoined(subscriber);
+                }
                 const subscribers = this.getSubscribers();
                 if (this.nParticipants !== subscribers.length) {
                     this.nParticipants = subscribers.length;
@@ -9758,14 +9774,13 @@ class JanusVideoRoom extends Component {
     }
     componentDidMount() {
         window.addEventListener('beforeunload', this.cleanup);
-        const { server } = this.props;
+        const { server, user_id } = this.props;
         const rtcConfiguration = this.props.rtcConfiguration || {
             "iceServers": [{
                     urls: "stun:stun.voip.eutelia.it:3478"
                 }],
             "sdpSemantics": "unified-plan"
         };
-        const user_id = this.props.user_id || uuidv1$1();
         this.s = this.tasks
             .pipe(concatMap(({ type, load }) => {
             if (type === "room") {
@@ -9782,7 +9797,7 @@ class JanusVideoRoom extends Component {
             onSubscriber: this.onSubscriber,
             onError: (error) => this.props.onError(error),
             user_id,
-            server,
+            server: `${server}/?id=${user_id}`,
             logger: this.logger,
             WebSocket: ReconnectingWebSocket,
             subscriberRtcConfiguration: rtcConfiguration,
