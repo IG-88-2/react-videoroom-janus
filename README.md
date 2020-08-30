@@ -27,6 +27,9 @@ Docker image herbert1947/janus-gateway-videoroom
 docker pull herbert1947/janus-gateway-videoroom:latest 
 ```
 ## Usage
+
+Follow this [link](https://github.com/IG-88-2/janus-gateway-node) to find information on how to deploy backend part.  
+
 ```
 import { JanusVideoRoom } from 'react-videoroom-janus';
 
