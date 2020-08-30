@@ -54,7 +54,8 @@ export default {
     sourceMaps(),
     copy({
       targets: [
-        { src: './package.json', dest: 'dist' }
+        { src: './package.json', dest: 'dist' },
+        { src: './README.md', dest: 'dist' }
       ]
     })
   ]
