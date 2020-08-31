@@ -13,6 +13,7 @@
     "videoroom",
     "webrtc",
     "janus",
+    "janus-gateway",
     "calls",
     "videocalls",
     "video",
