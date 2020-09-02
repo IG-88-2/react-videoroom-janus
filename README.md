@@ -15,7 +15,7 @@ This is screenshot from [video](https://www.youtube.com/watch?v=zxRwELmyWU0&t=1s
 add janus client functionality in form of react component. You just drop this into your app, attach callbacks and it works.  
 
 [janus-gateway-client](https://github.com/IG-88-2/janus-gateway-client) - logic related to signaling and negotiation between frontend
-and nodejs backend, this is separate package which you have to install in your nodejs app.  
+and nodejs backend, this is separate package which you can install in your app.  
 
 [janus-gateway-node](https://github.com/IG-88-2/janus-gateway-node) - janus instances manager, 
 receives messages from clients and dispatches them to correct janus instances (based on location of created room), sending back responses.  
