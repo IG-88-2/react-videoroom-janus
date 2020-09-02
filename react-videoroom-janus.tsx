@@ -307,7 +307,7 @@ export class JanusVideoRoom extends Component<JanusVideoRoomProps,JanusVideoRoom
 			onSubscriber: this.onSubscriber,
 			onError: (error) => this.props.onError(error),
 			user_id,
-			server: `${server}/?id=${user_id}`,
+			server, //: `${server}/?id=${user_id}`,
 			logger: this.logger,
 			WebSocket: ReconnectingWebSocket,
 			subscriberRtcConfiguration: rtcConfiguration,

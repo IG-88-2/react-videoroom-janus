@@ -7144,7 +7144,7 @@ var global = _core$1.global;
 
 var global$1 = _core$1.global;
 
-var C__Users_clint_Desktop_janusGatewayVideoroomTests_janusGatewayVideoroomDemo_reactJanusVideoroom_janusGatewayClient_node_modules__babel_polyfill_lib = createCommonjsModule(function (module) {
+var C__Users_clint_Desktop_janusGatewayVideoroomTests_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib = createCommonjsModule(function (module) {
 
 
 
@@ -7159,7 +7159,7 @@ if (_global["default"]._babelPolyfill && typeof console !== "undefined" && conso
 _global["default"]._babelPolyfill = true;
 });
 
-unwrapExports(C__Users_clint_Desktop_janusGatewayVideoroomTests_janusGatewayVideoroomDemo_reactJanusVideoroom_janusGatewayClient_node_modules__babel_polyfill_lib);
+unwrapExports(C__Users_clint_Desktop_janusGatewayVideoroomTests_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib);
 
 const uuidv1 = require('uuid').v1;
 const getTransceiver = (pc, kind) => {
@@ -8157,6 +8157,7 @@ class JanusClient {
                 this.logger.json(request);
                 if (this.initializing) {
                     this.logger.info(`transaction - wait until connected...`);
+                    //TODO replace with subject
                     yield waitUntil(() => Promise.resolve(this.connected), 30000, 500);
                 }
                 else {
@@ -8225,7 +8226,7 @@ class JanusClient {
         this.user_id = user_id;
         this.WebSocket = WebSocket;
         this.logger = logger;
-        this.server = server;
+        this.server = `${server}/?id=${user_id}`; //server;
         this.ws = null;
         this.initializing = false;
         this.connected = false;
@@ -9797,7 +9798,7 @@ class JanusVideoRoom extends Component {
             onSubscriber: this.onSubscriber,
             onError: (error) => this.props.onError(error),
             user_id,
-            server: `${server}/?id=${user_id}`,
+            server,
             logger: this.logger,
             WebSocket: ReconnectingWebSocket,
             subscriberRtcConfiguration: rtcConfiguration,
