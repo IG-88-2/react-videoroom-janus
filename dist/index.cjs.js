@@ -7951,6 +7951,9 @@ class JanusClient {
                 this.notifyConnected();
                 delete this.notifyConnected;
             }
+            if (this.keepAlive) {
+                clearInterval(this.keepAlive);
+            }
             this.keepAlive = setInterval(() => {
                 this.transaction(({ type: 'keepalive' }))
                     .catch((error) => {
@@ -8172,7 +8175,6 @@ class JanusClient {
                     //await this.initialize();
                 }
             }
-            const timeout = this.transactionTimeout;
             const id = uuidv1();
             request.transaction = id;
             let r = null;
@@ -8184,19 +8186,19 @@ class JanusClient {
                 return Promise.reject(error);
             }
             p = new Promise((resolve, reject) => {
-                let t = setTimeout(() => {
+                const t = setTimeout(() => {
                     if (!this.connected && !this.initializing) {
                         this.initialize();
                     }
+                    this.logger.info(`timeout called for ${id}`);
                     delete this.calls[id];
                     const error = new Error(`${request.type} - timeout`);
                     reject(error);
-                }, timeout);
+                }, this.transactionTimeout);
                 const f = (message) => {
+                    this.logger.info(`resolving transaction ${id} - ${message.transaction}`);
                     if (message.transaction === id) {
-                        if (timeout) {
-                            clearTimeout(t);
-                        }
+                        clearTimeout(t);
                         delete this.calls[id];
                         if (message.type === "error") {
                             this.logger.error(request);

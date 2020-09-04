@@ -423,10 +423,10 @@ isarray@~1.0.0:
   resolved "https://registry.yarnpkg.com/isarray/-/isarray-1.0.0.tgz#bb935d48582cba168c06834957a54a3e07124f11"
   integrity sha1-u5NdSFgsuhaMBoNJV6VKPgcSTxE=
 
-janus-gateway-client@^0.0.54:
-  version "0.0.54"
-  resolved "https://registry.yarnpkg.com/janus-gateway-client/-/janus-gateway-client-0.0.54.tgz#2d2220906737df47418a2b09ecd66bdda84c7c32"
-  integrity sha512-DZMHk/mjWKAXs8PaeM2oOePxRpSQI+5ZykbrdGFx2Ud64TUhAOGNjGNKKku64TKz5utrvSq5mTcgKtcJpbwP0g==
+janus-gateway-client@^0.0.55:
+  version "0.0.55"
+  resolved "https://registry.yarnpkg.com/janus-gateway-client/-/janus-gateway-client-0.0.55.tgz#c36532272ecae00b14c1ac1f6b15f6acc7883e41"
+  integrity sha512-VXntmXdK53u/i2fiaO9KD4GnH/+UH/nvXOrlqTY6Hs/X9Drjtzv4Mwe0ud/7YkbRR2u9jRUL7SAJTE5PCPL/yA==
   dependencies:
     "@babel/polyfill" "^7.10.4"
 
