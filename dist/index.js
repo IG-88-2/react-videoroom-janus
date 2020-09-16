@@ -7951,9 +7951,6 @@
                     this.notifyConnected();
                     delete this.notifyConnected;
                 }
-                if (this.keepAlive) {
-                    clearInterval(this.keepAlive);
-                }
                 this.keepAlive = setInterval(() => {
                     this.transaction(({ type: 'keepalive' }))
                         .catch((error) => {
@@ -8175,6 +8172,7 @@
                         //await this.initialize();
                     }
                 }
+                const timeout = this.transactionTimeout;
                 const id = uuidv1();
                 request.transaction = id;
                 let r = null;
@@ -8186,19 +8184,19 @@
                     return Promise.reject(error);
                 }
                 p = new Promise((resolve, reject) => {
-                    const t = setTimeout(() => {
+                    let t = setTimeout(() => {
                         if (!this.connected && !this.initializing) {
                             this.initialize();
                         }
-                        this.logger.info(`timeout called for ${id}`);
                         delete this.calls[id];
                         const error = new Error(`${request.type} - timeout`);
                         reject(error);
-                    }, this.transactionTimeout);
+                    }, timeout);
                     const f = (message) => {
-                        this.logger.info(`resolving transaction ${id} - ${message.transaction}`);
                         if (message.transaction === id) {
-                            clearTimeout(t);
+                            if (timeout) {
+                                clearTimeout(t);
+                            }
                             delete this.calls[id];
                             if (message.type === "error") {
                                 this.logger.error(request);
