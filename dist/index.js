@@ -7148,7 +7148,7 @@
 
     var global$1 = _core$1.global;
 
-    var C__Users_clint_Desktop_janusGatewayVideoroomTests_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib = createCommonjsModule(function (module) {
+    var C__Users_clint_Desktop_janus_janusServerDemo_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib = createCommonjsModule(function (module) {
 
 
 
@@ -7163,7 +7163,7 @@
     _global["default"]._babelPolyfill = true;
     });
 
-    unwrapExports(C__Users_clint_Desktop_janusGatewayVideoroomTests_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib);
+    unwrapExports(C__Users_clint_Desktop_janus_janusServerDemo_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib);
 
     const uuidv1 = require('uuid').v1;
     const getTransceiver = (pc, kind) => {
@@ -7812,8 +7812,6 @@
                 this.initializing = true;
                 this.ws = new this.WebSocket(this.server, [], this.socketOptions);
                 this.ws.addEventListener('message', this.onMessage);
-                //this.ws.addEventListener('open', this.onOpen); ???
-                this.ws.addEventListener('close', this.onClose);
                 this.ws.addEventListener('error', this.onError);
                 return new Promise((resolve) => {
                     this.notifyConnected = () => resolve();
@@ -7830,7 +7828,6 @@
                 yield this.cleanup();
                 this.logger.info(`terminate: remove event listeners...`);
                 this.ws.removeEventListener('message', this.onMessage);
-                this.ws.removeEventListener('open', this.onOpen);
                 this.ws.removeEventListener('close', this.onClose);
                 this.ws.removeEventListener('error', this.onError);
                 if (this.notifyConnected) {
@@ -7947,9 +7944,14 @@
                 this.logger.success(`connection established...`);
                 this.initializing = false;
                 this.connected = true;
+                this.ws.removeEventListener('close', this.onClose);
+                this.ws.addEventListener('close', this.onClose);
                 if (this.notifyConnected) {
                     this.notifyConnected();
                     delete this.notifyConnected;
+                }
+                if (this.keepAlive) {
+                    clearInterval(this.keepAlive);
                 }
                 this.keepAlive = setInterval(() => {
                     this.transaction(({ type: 'keepalive' }))
@@ -8155,6 +8157,7 @@
                 });
             });
             this.transaction = (request) => __awaiter$1(this, void 0, void 0, function* () {
+                this.logger.info(`transaction - ${request.type}`);
                 //TODO review
                 if (!this.connected) {
                     this.logger.error(`transaction - not connected...`);
@@ -8172,7 +8175,6 @@
                         //await this.initialize();
                     }
                 }
-                const timeout = this.transactionTimeout;
                 const id = uuidv1();
                 request.transaction = id;
                 let r = null;
@@ -8184,19 +8186,19 @@
                     return Promise.reject(error);
                 }
                 p = new Promise((resolve, reject) => {
-                    let t = setTimeout(() => {
+                    const t = setTimeout(() => {
                         if (!this.connected && !this.initializing) {
                             this.initialize();
                         }
+                        this.logger.info(`timeout called for ${id}`);
                         delete this.calls[id];
                         const error = new Error(`${request.type} - timeout`);
                         reject(error);
-                    }, timeout);
+                    }, this.transactionTimeout);
                     const f = (message) => {
+                        this.logger.info(`resolving transaction ${id} - ${message.transaction}`);
                         if (message.transaction === id) {
-                            if (timeout) {
-                                clearTimeout(t);
-                            }
+                            clearTimeout(t);
                             delete this.calls[id];
                             if (message.type === "error") {
                                 this.logger.error(request);
@@ -8214,7 +8216,7 @@
                 return p;
             });
             this.getRooms = () => this.transaction({ type: "rooms" });
-            this.createRoom = (description, bitrate, bitrate_cap, videocodec, vp9_profile) => {
+            this.createRoom = (description, bitrate, bitrate_cap, videocodec, vp9_profile, permanent) => {
                 return this.transaction({
                     type: "create_room",
                     load: {
@@ -8222,7 +8224,8 @@
                         bitrate,
                         bitrate_cap,
                         videocodec,
-                        vp9_profile
+                        vp9_profile,
+                        permanent
                     }
                 });
             };
