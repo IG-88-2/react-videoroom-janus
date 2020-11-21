@@ -7144,7 +7144,7 @@ var global = _core$1.global;
 
 var global$1 = _core$1.global;
 
-var C__Users_clint_Desktop_janus_janusServerDemo_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib = createCommonjsModule(function (module) {
+var C__Users_clint_Desktop_janusServerDemo_janusServerDemo_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib = createCommonjsModule(function (module) {
 
 
 
@@ -7159,7 +7159,7 @@ if (_global["default"]._babelPolyfill && typeof console !== "undefined" && conso
 _global["default"]._babelPolyfill = true;
 });
 
-unwrapExports(C__Users_clint_Desktop_janus_janusServerDemo_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib);
+unwrapExports(C__Users_clint_Desktop_janusServerDemo_janusServerDemo_janusGatewayVideoroomDemo_reactVideoroomJanus_janusGatewayClient_node_modules__babel_polyfill_lib);
 
 const uuidv1 = require('uuid').v1;
 const getTransceiver = (pc, kind) => {
@@ -7176,43 +7176,39 @@ const getTransceiver = (pc, kind) => {
     }
     return transceiver;
 };
-const waitUntil = (f, timeout, defaultInterval) => __awaiter$1(void 0, void 0, void 0, function* () {
-    let interval = defaultInterval || 1000;
-    let time = 0;
-    const w = (resolve, reject) => __awaiter$1(void 0, void 0, void 0, function* () {
-        let done = false;
-        try {
-            done = yield f(time);
-        }
-        catch (e) {
-        }
-        if (done) {
-            resolve();
-        }
-        else if (timeout && time > timeout) {
-            const error = new Error('waitUntil - timeout');
-            reject(error);
-        }
-        else {
-            time += interval;
-            setTimeout(() => w(resolve, reject), interval);
-        }
-    });
-    return new Promise(w);
-});
 class JanusPublisher extends EventTarget {
     constructor(options) {
         super();
+        this.suspendStream = () => __awaiter$1(this, void 0, void 0, function* () {
+            const tracks = this.stream.getTracks();
+            for (let i = 0; i < tracks.length; i++) {
+                const track = tracks[i];
+                yield track.stop();
+            }
+            this.stream = undefined;
+        });
         this.initialize = () => __awaiter$1(this, void 0, void 0, function* () {
             yield this.attach();
-            const jsep = yield this.createOffer(this.mediaConstraints);
+            let jsep = null;
+            try {
+                jsep = yield this.createOffer(this.mediaConstraints);
+            }
+            catch (error) {
+                if (this.stream && this.terminated) {
+                    yield this.suspendStream();
+                    throw new Error("client terminated");
+                }
+                else {
+                    throw error;
+                }
+            }
             const response = yield this.joinandconfigure(jsep);
             return response.load.data.publishers;
         });
         this.terminate = () => __awaiter$1(this, void 0, void 0, function* () {
+            this.terminated = true;
             const event = new Event('terminated');
             if (this.pc) {
-                clearInterval(this.statsInterval);
                 this.pc.close();
             }
             if (this.stream) {
@@ -7247,7 +7243,19 @@ class JanusPublisher extends EventTarget {
             }
         });
         this.renegotiate = ({ audio, video, mediaConstraints }) => __awaiter$1(this, void 0, void 0, function* () {
-            const jsep = yield this.createOffer(mediaConstraints || this.mediaConstraints);
+            let jsep = null;
+            try {
+                jsep = yield this.createOffer(mediaConstraints || this.mediaConstraints);
+            }
+            catch (error) {
+                if (this.stream && this.terminated) {
+                    yield this.suspendStream();
+                    throw new Error("client terminated");
+                }
+                else {
+                    throw error;
+                }
+            }
             this.logger.json(jsep);
             const configured = yield this.configure({
                 jsep,
@@ -7259,15 +7267,6 @@ class JanusPublisher extends EventTarget {
         });
         this.createPeerConnection = (configuration) => {
             this.pc = new RTCPeerConnection(configuration);
-            this.statsInterval = setInterval(() => {
-                this.pc.getStats()
-                    .then((stats) => {
-                    this.stats = stats;
-                })
-                    .catch((error) => {
-                    this.logger.error(error);
-                });
-            }, 3000);
             this.pc.onicecandidate = (event) => {
                 if (!event.candidate) {
                     this.sendTrickleCandidate({
@@ -7301,6 +7300,15 @@ class JanusPublisher extends EventTarget {
             this.pc.onsignalingstatechange = e => {
                 this.signalingState = this.pc.signalingState;
                 this.logger.info(`[${this.ptype}] onicegatheringstatechange ${this.pc.signalingState}`);
+                if (this.pc.signalingState === "closed" && !this.terminated) {
+                    this.renegotiate({
+                        audio: true,
+                        video: true,
+                        mediaConstraints: this.mediaConstraints
+                    })
+                        .then((reconfigured) => this.logger.json(reconfigured))
+                        .catch((error) => this.logger.error(error));
+                }
             };
             this.pc.onicecandidateerror = error => {
                 this.logger.error(error);
@@ -7347,6 +7355,10 @@ class JanusPublisher extends EventTarget {
                 at.direction = "sendonly";
             }
             else {
+                //TODO DOMException: Failed to execute 'addTransceiver' on 'RTCPeerConnection': The RTCPeerConnection's signalingState is 'closed'
+                if (this.pc.signalingState === "closed" && !this.terminated) {
+                    this.createPeerConnection(this.rtcConfiguration);
+                }
                 vt = this.pc.addTransceiver("video", videoOptions);
                 at = this.pc.addTransceiver("audio", audioOptions);
             }
@@ -7364,6 +7376,7 @@ class JanusPublisher extends EventTarget {
                 }
             };
             const result = yield this.transaction(request);
+            //TODO result undefined due to connection already terminated
             this.handle_id = result.load;
             this.attached = true;
             return result;
@@ -7553,9 +7566,9 @@ class JanusSubscriber extends EventTarget {
         });
         this.terminate = () => __awaiter$1(this, void 0, void 0, function* () {
             const event = new Event('terminated');
+            this.terminated = true;
             this.dispatchEvent(event);
             if (this.pc) {
-                clearInterval(this.statsInterval);
                 this.pc.close();
             }
             if (this.attached) {
@@ -7565,15 +7578,6 @@ class JanusSubscriber extends EventTarget {
         });
         this.createPeerConnection = (configuration) => {
             this.pc = new RTCPeerConnection(configuration);
-            this.statsInterval = setInterval(() => {
-                this.pc.getStats()
-                    .then((stats) => {
-                    this.stats = stats;
-                })
-                    .catch((error) => {
-                    this.logger.error(error);
-                });
-            }, 3000);
             this.pc.onicecandidate = (event) => {
                 if (!event.candidate) {
                     this.sendTrickleCandidate({
@@ -7667,6 +7671,10 @@ class JanusSubscriber extends EventTarget {
                 vt.direction = "recvonly";
             }
             else {
+                //TODO DOMException: Failed to execute 'addTransceiver' on 'RTCPeerConnection': The RTCPeerConnection's signalingState is 'closed'
+                if (this.pc.signalingState === "closed" && !this.terminated) {
+                    this.createPeerConnection(this.rtcConfiguration);
+                }
                 vt = this.pc.addTransceiver("video", { direction: "recvonly" });
                 at = this.pc.addTransceiver("audio", { direction: "recvonly" });
             }
@@ -7776,6 +7784,7 @@ class JanusSubscriber extends EventTarget {
         this.room_id = room_id;
         this.ptype = "subscriber";
         this.attached = false;
+        this.rtcConfiguration = rtcConfiguration;
         this.volume = {
             value: null,
             timer: null
@@ -7841,8 +7850,15 @@ class JanusClient {
         this.replaceVideoTrack = (deviceId) => __awaiter$1(this, void 0, void 0, function* () {
             try {
                 const tracks = this.publisher.stream.getVideoTracks();
-                const track = tracks[0];
-                yield track.stop();
+                const audioTracks = this.publisher.stream.getAudioTracks();
+                for (let i = 0; i < tracks.length; i++) {
+                    const track = tracks[i];
+                    yield track.stop();
+                }
+                for (let j = 0; j < audioTracks.length; j++) {
+                    const track = audioTracks[j];
+                    yield track.stop();
+                }
             }
             catch (error) {
                 this.onError(error);
@@ -7875,32 +7891,24 @@ class JanusClient {
                     this.publisher.transaction = (...args) => Promise.resolve();
                     delete this.publisher;
                 }
-                catch (error) {
-                    this.onError(error);
-                }
+                catch (error) { }
             }
-            try {
-                this.publisher = new JanusPublisher({
-                    room_id: this.room_id,
-                    user_id: this.user_id,
-                    transaction: this.transaction,
-                    logger: this.logger,
-                    onError: this.onError,
-                    mediaConstraints,
-                    rtcConfiguration: this.publisherRtcConfiguration
-                });
-                const publishers = yield this.publisher.initialize();
-                this.onPublisher(this.publisher);
-                if (!publishers || !Array.isArray(publishers)) {
-                    const error = new Error(`join - publishers incorrect format...`);
-                    this.onError(error);
-                    return;
-                }
-                this.onPublishers(publishers);
+            this.publisher = new JanusPublisher({
+                room_id: this.room_id,
+                user_id: this.user_id,
+                transaction: this.transaction,
+                logger: this.logger,
+                onError: this.onError,
+                mediaConstraints,
+                rtcConfiguration: this.publisherRtcConfiguration
+            });
+            const publishers = yield this.publisher.initialize();
+            this.onPublisher(this.publisher);
+            if (!publishers || !Array.isArray(publishers)) {
+                const error = new Error(`could not retrieve participants info`);
+                throw error;
             }
-            catch (error) {
-                this.onError(error);
-            }
+            this.onPublishers(publishers);
         });
         this.leave = () => __awaiter$1(this, void 0, void 0, function* () {
             if (this.terminating) {
@@ -8154,22 +8162,9 @@ class JanusClient {
         });
         this.transaction = (request) => __awaiter$1(this, void 0, void 0, function* () {
             this.logger.info(`transaction - ${request.type}`);
-            //TODO review
             if (!this.connected) {
-                this.logger.error(`transaction - not connected...`);
-                this.logger.json(request);
-                if (this.initializing) {
-                    this.logger.info(`transaction - wait until connected...`);
-                    //TODO replace with subject
-                    yield waitUntil(() => Promise.resolve(this.connected), 30000, 500);
-                }
-                else {
-                    const error = new Error(`client should be initialized before you can make transaction`);
-                    this.onError(error);
-                    return;
-                    //this.logger.info(`transaction - initialize...`);
-                    //await this.initialize();
-                }
+                const error = new Error(`client should be initialized before you can make transaction`);
+                throw error;
             }
             const id = uuidv1();
             request.transaction = id;
@@ -8183,9 +8178,6 @@ class JanusClient {
             }
             p = new Promise((resolve, reject) => {
                 const t = setTimeout(() => {
-                    if (!this.connected && !this.initializing) {
-                        this.initialize();
-                    }
                     this.logger.info(`timeout called for ${id}`);
                     delete this.calls[id];
                     const error = new Error(`${request.type} - timeout`);
@@ -8225,7 +8217,8 @@ class JanusClient {
                 }
             });
         };
-        const { onSubscriber, onPublisher, onError, WebSocket, logger, server, subscriberRtcConfiguration, publisherRtcConfiguration, transactionTimeout, keepAliveInterval, user_id } = options;
+        const { onSubscriber, onPublisher, onError, WebSocket, logger, server, subscriberRtcConfiguration, publisherRtcConfiguration, transactionTimeout, keepAliveInterval, user_id, socketOptions } = options;
+        console.log('janus socket options', socketOptions);
         this.user_id = user_id;
         this.WebSocket = WebSocket;
         this.logger = logger;
@@ -8241,11 +8234,8 @@ class JanusClient {
         this.onError = onError;
         this.onPublisher = onPublisher;
         this.onSubscriber = onSubscriber;
-        this.socketOptions = {
-            WebSocket,
-            connectionTimeout: 1000,
-            maxRetries: 10
-        };
+        //TODO ws.refresh()
+        this.socketOptions = Object.assign({ WebSocket, connectionTimeout: 5000, maxRetries: 50 }, (socketOptions || {}));
         this.transactionTimeout = transactionTimeout;
         this.keepAliveInterval = keepAliveInterval;
         this.logger.enable();
